@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Interactive World Map - D3.js</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
+    <!-- D3 color schemes (including magma) -->
+    <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/topojson@3"></script>
     <style>
         body {
@@ -42,24 +44,41 @@
             align-items: center;
             min-height: 600px;
         }
+
+        .controls {
+            margin-bottom: 10px;
+            font-size: 13px;
+            background-color: #ffffff;
+            padding: 8px 10px;
+            border-radius: 4px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+            max-width: 260px;
+        }
+
+        .controls label {
+            display: block;
+            cursor: pointer;
+            margin: 4px 0;
+        }
         
         .country {
             fill: #e0e0e0;
             stroke: #fff;
             stroke-width: 0.5px;
             cursor: pointer;
-            transition: fill 0.2s;
+            transition: stroke-width 0.2s, stroke 0.2s;
         }
         
         .country:hover {
-            fill: #4a90e2;
-            stroke-width: 1px;
+            /* Emphasize outline on hover without changing fill color scale */
+            stroke: #333;
+            stroke-width: 1.5px;
         }
         
         .country.selected {
-            fill: #2c5aa0;
-            stroke: #1a3d6b;
-            stroke-width: 1.5px;
+            /* Gold outline “halo” for selected country */
+            stroke: #ffd700;
+            stroke-width: 3px;
         }
         
         #info-panel {
@@ -69,6 +88,15 @@
             border-radius: 5px;
             border-left: 4px solid #4a90e2;
             min-height: 100px;
+            position: relative;
+            transform: translateY(0);
+            transition: transform 0.35s ease, box-shadow 0.35s ease;
+        }
+
+        /* Temporary "pop" effect to draw attention when a country is selected */
+        #info-panel.pop {
+            transform: translateY(-40px);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
         }
         
         #info-panel h3 {
@@ -104,13 +132,41 @@
     <div class="container">
         <h1>Interactive World Map</h1>
         <p class="subtitle">Click on any country to view its data</p>
+
+        <div class="controls" id="metric-controls">
+            <strong>Colour by:</strong>
+            <label>
+                <input type="radio" name="metric-filter" value="aggregate" checked>
+                Aggregate Index
+            </label>
+            <label>
+                <input type="radio" name="metric-filter" value="happiness">
+                Happiness Rank
+            </label>
+            <label>
+                <input type="radio" name="metric-filter" value="mortality">
+                Child Mortality Rate
+            </label>
+            <label>
+                <input type="radio" name="metric-filter" value="education">
+                Primary School Completion Rate
+            </label>
+            <label>
+                <input type="radio" name="metric-filter" value="nutrition">
+                Children with Stunted Growth
+            </label>
+            <label>
+                <input type="radio" name="metric-filter" value="sanitation">
+                Households with Basic Sanitation
+            </label>
+        </div>
         
         <div id="map-container">
             <div class="loading">Loading world map...</div>
         </div>
         
-        <div id="info-panel" style="display: none;">
-            <h3 id="country-name">Select a country</h3>
+        <div id="info-panel">
+            <h3 id="country-name">Select a country to view details!</h3>
             <div id="country-data"></div>
         </div>
     </div>
@@ -141,23 +197,57 @@
         // Create path generator
         const path = d3.geoPath().projection(projection);
         
-        // Store country data
+        // Store country data (keyed by CSV "country" column)
         let countryData = {};
         let selectedCountry = null;
+        let wellbeingColorScale = null; // color scale for child_wellbeing_index
+        let activeMetricKey = "aggregate"; // which metric is driving the color scale
+
+        // Mapping from UI filter to CSV z-score field
+        const metricConfig = {
+            aggregate: {
+                field: "child_wellbeing_index",
+                label: "Aggregate Index"
+            },
+            happiness: {
+                field: "happiness_rank",
+                label: "Happiness Rank"
+            },
+            mortality: {
+                field: "among5_14_mortality_rate_2022",
+                label: "Child Mortality"
+            },
+            education: {
+                field: "completion_rate_2000_2023_primary",
+                label: "Primary School Completion Rate"
+            },
+            nutrition: {
+                field: "stunted_perc_2022",
+                label: "Children with Stunted Growth"
+            },
+            sanitation: {
+                field: "basic_sanitation_household_perc_2022",
+                label: "Households with Basic Sanitation"
+            }
+        };
         
         // Country name mapping for common variations
+        // Keys are map names (from topojson), values are CSV "country" names
         const countryNameMap = {
             "United States of America": "United States",
             "Russian Federation": "Russia",
             "United Kingdom": "United Kingdom",
             "Czech Republic": "Czechia",
+            "Central African Rep.": "Central African Republic",
             "Republic of the Congo": "Congo (Brazzaville)",
             "Democratic Republic of the Congo": "Congo (Kinshasa)",
             "Myanmar": "Myanmar",
             "Palestine": "State of Palestine",
             "Syria": "Syrian Arab Republic",
-            "South Korea": "South Korea",
-            "North Korea": "North Korea",
+            "South Korea": "Republic of Korea",
+            "Korea, South": "Republic of Korea",
+            "North Korea": "Democratic People's Republic of Korea",
+            "Korea, North": "Democratic People's Republic of Korea",
             "Iran": "Iran",
             "Laos": "Laos",
             "Vietnam": "Vietnam",
@@ -188,6 +278,54 @@
             }
             
             return null;
+        }
+        
+        // Update country fill colors based on selected metric using the d3 magma palette
+        function updateCountryColors() {
+            // Lazily (re)build color scale if needed from currently loaded data
+            if (!wellbeingColorScale) {
+                const metric = metricConfig[activeMetricKey];
+                if (!metric) {
+                    console.warn("Unknown metric key:", activeMetricKey);
+                    return;
+                }
+                const fieldName = metric.field;
+
+                const allRows = Object.values(countryData || {});
+                const values = allRows
+                    .map(d => +d[fieldName])
+                    .filter(v => !isNaN(v));
+
+                if (values.length > 0) {
+                    const extent = d3.extent(values);
+                    // Use official d3.interpolateMagma from d3-scale-chromatic
+                    wellbeingColorScale = d3.scaleSequential(d3.interpolateMagma)
+                        .domain(extent);
+                } else {
+                    console.warn("No valid child_wellbeing_index values found for color scale.");
+                    return;
+                }
+            }
+            
+            const metric = metricConfig[activeMetricKey];
+            if (!metric) return;
+            const fieldName = metric.field;
+
+            svg.selectAll(".country")
+                .style("fill", function(d) {
+                    const name = d.properties.NAME || d.properties.name || "Unknown";
+                    const data = findCountryData(name);
+                    
+                    if (data && data[fieldName] !== undefined && data[fieldName] !== "") {
+                        const val = +data[fieldName];
+                        if (!isNaN(val)) {
+                            return wellbeingColorScale(val);
+                        }
+                    }
+                    
+                    // Default neutral grey for countries without index data
+                    return "#e0e0e0";
+                });
         }
         
         // Load world map data from Natural Earth
@@ -222,6 +360,9 @@
                     });
                 
                 console.log("World map loaded successfully!");
+
+                // Apply colors (may be a no-op until data is loaded)
+                updateCountryColors();
             })
             .catch(function(error) {
                 console.error("Error loading map:", error);
@@ -231,6 +372,16 @@
         
         // Function to handle country click
         function handleCountryClick(countryName, geoData) {
+            // Check if we have data for this country (with smart matching)
+            const data = findCountryData(countryName);
+            
+            // If there's no associated data (e.g., Greenland, some territories),
+            // make the country effectively unselectable.
+            if (!data) {
+                console.log(`No data available for "${countryName}", click ignored.`);
+                return;
+            }
+
             // Remove previous selection
             svg.selectAll(".country").classed("selected", false);
             
@@ -244,41 +395,69 @@
             // Show info panel
             const infoPanel = d3.select("#info-panel");
             infoPanel.style("display", "block");
+
+            // Brief "pop up" animation to draw attention
+            infoPanel.classed("pop", false);
+            // Force reflow so the class re-add will retrigger the transition
+            if (infoPanel.node()) {
+                // eslint-disable-next-line no-unused-expressions
+                infoPanel.node().offsetWidth;
+            }
+            infoPanel.classed("pop", true);
+            setTimeout(() => {
+                infoPanel.classed("pop", false);
+            }, 500);
             
             // Update country name
             d3.select("#country-name").text(countryName);
-            
-            // Check if we have data for this country (with smart matching)
-            const data = findCountryData(countryName);
-            
-            if (data) {
-                // Display country data
-                displayCountryData(data);
-            } else {
-                // Show placeholder for data
-                d3.select("#country-data").html(`
-                    <p><strong>No data available for this country yet.</strong></p>
-                    <p>Data can be loaded from your CSV file and displayed here.</p>
-                    <p style="font-size: 11px; color: #999;">Map name: "${countryName}"</p>
-                `);
-            }
+
+            // Display country data (we already know `data` exists)
+            displayCountryData(data);
         }
         
         // Function to display country data
         function displayCountryData(data) {
-            let html = "";
-            
-            // Display all available data fields
-            for (const [key, value] of Object.entries(data)) {
-                if (key !== "Country name" && value !== "" && value != null) {
-                    // Format the key name (replace underscores, capitalize)
-                    const formattedKey = key.replace(/_/g, " ")
-                        .replace(/\b\w/g, l => l.toUpperCase());
-                    html += `<p><strong>${formattedKey}:</strong> ${value}</p>`;
-                }
-            }
-            
-            d3.select("#country-data").html(html);
+            // Helper to safely format numeric values
+            const fmt = (v, digits = 1) => {
+                if (v === null || v === undefined || v === "" || isNaN(+v)) return "Data not available";
+                const num = +v;
+                // Don't over‑round integers
+                return Number.isInteger(num) ? num.toString() : num.toFixed(digits);
+            };
+
+            const lines = [];
+
+            // Life expectancy (years)
+            lines.push(`<p><strong>Life expectancy at birth (years, 2023):</strong> ${fmt(data["life_expectancy_at_birth_2023_raw"], 1)}</p>`);
+
+            // Population under 18 (thousands)
+            lines.push(`<p><strong>Population under 18 (thousands, 2023):</strong> ${fmt(data["population_2023_thousands_under18_raw"], 1)}</p>`);
+
+            // Mortality rate 5–14
+            lines.push(`<p><strong>Mortality rate (ages 5–14, 2022, per 100,000 children):</strong> ${fmt(data["among5_14_mortality_rate_2022_raw"], 1)}</p>`);
+
+            // Primary completion rate
+            lines.push(`<p><strong>Primary school completion rate (2000–2023, %):</strong> ${fmt(data["completion_rate_2000_2023_primary_raw"], 1)}</p>`);
+
+            // Basic sanitation
+            lines.push(`<p><strong>Households with basic sanitation services (%, 2022):</strong> ${fmt(data["basic_sanitation_household_perc_2022_raw"], 1)}</p>`);
+
+            // Stunting
+            lines.push(`<p><strong>Children with stunted growth (%, 2022):</strong> ${fmt(data["stunted_perc_2022_raw"], 1)}</p>`);
+
+            // PM2.5
+            lines.push(`<p><strong>Mean annual PM2.5 exposure (µg/m³):</strong> ${fmt(data["pm25_latest_raw"], 1)}</p>`);
+
+            // Internet access
+            lines.push(`<p><strong>Population with internet access (latest %, all ages):</strong> ${fmt(data["internet_latest_raw"], 1)}</p>`);
+
+            // GDP per person
+            lines.push(`<p><strong>GDP per person (latest, US$ PPP or constant prices):</strong> ${fmt(data["gdp_latest_raw"], 0)}</p>`);
+
+            // Happiness rank
+            lines.push(`<p><strong>Happiness rank (World Happiness Report):</strong> ${fmt(data["happiness_rank_raw"], 0)}</p>`);
+
+            d3.select("#country-data").html(lines.join(""));
         }
         
         // Function to load CSV data
@@ -287,7 +466,8 @@
                 .then(function(data) {
                     // Process CSV data
                     data.forEach(function(row) {
-                        const countryName = row["Country name"];
+                        // The main identifier in this CSV is the "country" column
+                        const countryName = row["country"];
                         if (countryName) {
                             // Store all data for this country
                             countryData[countryName] = row;
@@ -295,6 +475,12 @@
                     });
                     
                     console.log(`Loaded data for ${Object.keys(countryData).length} countries`);
+
+                    // Reset color scale so it is rebuilt for the active metric
+                    wellbeingColorScale = null;
+
+                    // Apply colors to any already-rendered countries
+                    updateCountryColors();
                     
                     // If a country is currently selected, update its display
                     if (selectedCountry) {
@@ -309,6 +495,17 @@
                 });
         }
         
+        // Metric filter controls (radio buttons)
+        const metricInputs = document.querySelectorAll('input[name="metric-filter"]');
+        metricInputs.forEach(input => {
+            input.addEventListener("change", function() {
+                if (!this.checked) return;
+                activeMetricKey = this.value;
+                wellbeingColorScale = null; // force rebuild for new metric
+                updateCountryColors();
+            });
+        });
+
         // Function to show tooltip
         function showTooltip(event, countryName) {
             tooltip
@@ -324,7 +521,8 @@
         }
         
         // Load CSV data automatically
-        loadCountryData("WHR23_Data_Figure_2.1.csv");
+        // Uses worldchildwellbeing3 (1).csv, which contains Z‑scores and *_raw values
+        loadCountryData("worldchildwellbeing3 (1).csv");
     </script>
 </body>
 </html>
