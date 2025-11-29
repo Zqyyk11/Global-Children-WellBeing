@@ -23,6 +23,8 @@
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            width: 100%;
+            box-sizing: border-box;
         }
         
         h1 {
@@ -41,24 +43,194 @@
         #map-container {
             display: flex;
             justify-content: center;
-            align-items: center;
+            align-items: flex-start;
             min-height: 600px;
+            position: relative;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        #map-wrapper {
+            display: flex;
+            width: 100%;
+            max-width: 100%;
+            gap: 20px;
+            align-items: flex-start;
+        }
+
+        #bubble-legend {
+            position: relative;
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            min-width: 240px;
+            max-width: 240px;
+            flex-shrink: 0;
+            transition: max-width 0.3s ease, padding 0.3s ease, opacity 0.3s ease;
+        }
+
+        #bubble-legend.collapsed {
+            max-width: 50px;
+            padding: 10px 5px;
+            overflow: hidden;
+        }
+
+        #bubble-legend.collapsed #legend-content {
+            opacity: 0;
+            pointer-events: none;
+            height: 0;
+            overflow: hidden;
+        }
+
+        #bubble-legend h4 {
+            margin: 0 0 12px 0;
+            font-size: 14px;
+            color: #333;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 8px;
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            padding-right: 20px;
+        }
+
+        #bubble-legend h4::after {
+            content: '▼';
+            position: absolute;
+            right: 0;
+            font-size: 10px;
+            transition: transform 0.3s ease;
+        }
+
+        #bubble-legend.collapsed h4::after {
+            transform: rotate(-90deg);
+        }
+
+        #legend-content {
+            transition: opacity 0.3s ease;
+        }
+
+        .legend-section {
+            margin-bottom: 20px;
+        }
+
+        .legend-section-title {
+            font-size: 12px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .legend-item-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .legend-color-circle {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid #333;
+            margin-right: 10px;
+            flex-shrink: 0;
+        }
+
+        .legend-item-text {
+            font-size: 11px;
+            color: #333;
+        }
+
+        .legend-color-scale {
+            width: 100%;
+            height: 20px;
+            border: 1px solid #333;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            background: linear-gradient(to right, 
+                #000004, #1b0c42, #4a0e6e, #781c6d, #a52c60, #cf4446, 
+                #ed6925, #fb9a06, #f7d03c, #fcffa4);
+        }
+
+        .legend-scale-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 9px;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        .legend-outline {
+            width: 30px;
+            height: 20px;
+            border: 3px solid #ffd700;
+            border-radius: 2px;
+            margin-right: 10px;
+            flex-shrink: 0;
+            background-color: #f9f9f9;
+        }
+
+        .legend-outline-hover {
+            width: 30px;
+            height: 20px;
+            border: 1.5px solid #333;
+            border-radius: 2px;
+            margin-right: 10px;
+            flex-shrink: 0;
+            background-color: #f9f9f9;
+        }
+
+        .legend-grey {
+            width: 30px;
+            height: 20px;
+            background-color: #e0e0e0;
+            border: 0.5px solid #fff;
+            border-radius: 2px;
+            margin-right: 10px;
+            flex-shrink: 0;
+        }
+
+        #map-svg-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        #map-svg-container svg {
+            max-width: 100%;
+            height: auto;
         }
 
         .controls {
-            margin-bottom: 10px;
-            font-size: 13px;
-            background-color: #ffffff;
-            padding: 8px 10px;
+            margin-bottom: 15px;
+            font-size: 12px;
+            background-color: #f8f9fa;
+            padding: 10px;
             border-radius: 4px;
-            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-            max-width: 260px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .controls strong {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #666;
+            letter-spacing: 0.5px;
         }
 
         .controls label {
             display: block;
             cursor: pointer;
             margin: 4px 0;
+            font-size: 11px;
         }
         
         .country {
@@ -126,49 +298,93 @@
             opacity: 0;
             transition: opacity 0.2s;
         }
+
+        /* Bubble chart styles - positioned on map */
+        .bubble-overlay {
+            pointer-events: none;
+        }
+
+        .bubble {
+            fill-opacity: 0.8;
+            stroke: #333;
+            stroke-width: 2px;
+            cursor: pointer;
+            transition: fill-opacity 0.3s, stroke-width 0.3s;
+            pointer-events: all;
+        }
+
+        .bubble:hover {
+            fill-opacity: 1;
+            stroke-width: 3px;
+        }
+
+        .bubble-label {
+            font-weight: bold;
+            text-anchor: middle;
+            pointer-events: none;
+            fill: #333;
+        }
+
+        .bubble-value {
+            text-anchor: middle;
+            pointer-events: none;
+            fill: #333;
+        }
+
+
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Interactive World Map</h1>
         <p class="subtitle">Click on any country to view its data</p>
-
-        <div class="controls" id="metric-controls">
-            <strong>Colour by:</strong>
-            <label>
-                <input type="radio" name="metric-filter" value="aggregate" checked>
-                Aggregate Index
-            </label>
-            <label>
-                <input type="radio" name="metric-filter" value="happiness">
-                Happiness Rank
-            </label>
-            <label>
-                <input type="radio" name="metric-filter" value="mortality">
-                Child Mortality Rate
-            </label>
-            <label>
-                <input type="radio" name="metric-filter" value="education">
-                Primary School Completion Rate
-            </label>
-            <label>
-                <input type="radio" name="metric-filter" value="nutrition">
-                Children with Stunted Growth
-            </label>
-            <label>
-                <input type="radio" name="metric-filter" value="sanitation">
-                Households with Basic Sanitation
-            </label>
-        </div>
         
         <div id="map-container">
-            <div class="loading">Loading world map...</div>
+            <div id="map-wrapper">
+                <div id="bubble-legend">
+                    <h4 id="legend-toggle">Map Legend</h4>
+                    <div id="legend-content">
+                        <div class="controls" id="metric-controls">
+                            <strong>Colour by:</strong>
+                            <label>
+                                <input type="radio" name="metric-filter" value="aggregate" checked>
+                                Aggregate Index
+                            </label>
+                            <label>
+                                <input type="radio" name="metric-filter" value="happiness">
+                                Happiness Rank
+                            </label>
+                            <label>
+                                <input type="radio" name="metric-filter" value="mortality">
+                                Child Mortality Rate
+                            </label>
+                            <label>
+                                <input type="radio" name="metric-filter" value="education">
+                                Primary School Completion Rate
+                            </label>
+                            <label>
+                                <input type="radio" name="metric-filter" value="nutrition">
+                                Children with Stunted Growth
+                            </label>
+                            <label>
+                                <input type="radio" name="metric-filter" value="sanitation">
+                                Households with Basic Sanitation
+                            </label>
+                        </div>
+                        <div id="legend-items"></div>
+                    </div>
+                </div>
+                <div id="map-svg-container">
+                    <div class="loading">Loading world map...</div>
+                </div>
+            </div>
         </div>
         
         <div id="info-panel">
             <h3 id="country-name">Select a country to view details!</h3>
             <div id="country-data"></div>
         </div>
+
     </div>
     
     <div class="tooltip" id="tooltip"></div>
@@ -180,11 +396,13 @@
         const margin = { top: 20, right: 20, bottom: 20, left: 20 };
         
         // Create SVG
-        const svg = d3.select("#map-container")
+        const svg = d3.select("#map-svg-container")
             .html("") // Clear loading message
             .append("svg")
             .attr("width", width)
-            .attr("height", height);
+            .attr("height", height)
+            .attr("viewBox", `0 0 ${width} ${height}`)
+            .attr("preserveAspectRatio", "xMidYMid meet");
         
         // Create tooltip
         const tooltip = d3.select("#tooltip");
@@ -366,7 +584,7 @@
             })
             .catch(function(error) {
                 console.error("Error loading map:", error);
-                d3.select("#map-container")
+                d3.select("#map-svg-container")
                     .html(`<div class="loading" style="color: red;">Error loading map data. Please check your internet connection or try a different data source.</div>`);
             });
         
@@ -412,11 +630,12 @@
             d3.select("#country-name").text(countryName);
 
             // Display country data (we already know `data` exists)
-            displayCountryData(data);
+            displayCountryData(data, geoData);
+            
         }
         
         // Function to display country data
-        function displayCountryData(data) {
+        function displayCountryData(data, geoData) {
             // Helper to safely format numeric values
             const fmt = (v, digits = 1) => {
                 if (v === null || v === undefined || v === "" || isNaN(+v)) return "Data not available";
@@ -431,7 +650,7 @@
             lines.push(`<p><strong>Life expectancy at birth (years, 2023):</strong> ${fmt(data["life_expectancy_at_birth_2023_raw"], 1)}</p>`);
 
             // Population under 18 (thousands)
-            lines.push(`<p><strong>Population under 18 (thousands, 2023):</strong> ${fmt(data["population_2023_thousands_under18_raw"], 1)}</p>`);
+            lines.push(`<p><strong>Population under 18 (thousands, 2023):</strong> ${fmt(data["population_2023_thousands_under18"], 1)}</p>`);
 
             // Mortality rate 5–14
             lines.push(`<p><strong>Mortality rate (ages 5–14, 2022, per 100,000 children):</strong> ${fmt(data["among5_14_mortality_rate_2022_raw"], 1)}</p>`);
@@ -458,6 +677,153 @@
             lines.push(`<p><strong>Happiness rank (World Happiness Report):</strong> ${fmt(data["happiness_rank_raw"], 0)}</p>`);
 
             d3.select("#country-data").html(lines.join(""));
+            
+            // Create bubble chart on the map
+            createBubbleChart(data, geoData);
+        }
+        
+        // Function to create bubble chart for the 5 key statistics on the map
+        function createBubbleChart(data, countryGeoData) {
+            // Remove any existing bubble overlay
+            svg.selectAll(".bubble-overlay").remove();
+            
+            // Define the 5 key statistics
+            const stats = [
+                {
+                    name: "Life Expectancy",
+                    value: parseFloat(data["life_expectancy_at_birth_2023_raw"]) || 0,
+                    unit: "years",
+                    field: "life_expectancy_at_birth_2023_raw"
+                },
+                {
+                    name: "Population <18",
+                    value: parseFloat(data["population_2023_thousands_under18"]) || 0,
+                    unit: "thousands",
+                    field: "population_2023_thousands_under18"
+                },
+                {
+                    name: "Mortality Rate",
+                    value: parseFloat(data["among5_14_mortality_rate_2022_raw"]) || 0,
+                    unit: "per 100k",
+                    field: "among5_14_mortality_rate_2022_raw"
+                },
+                {
+                    name: "Primary Completion",
+                    value: parseFloat(data["completion_rate_2000_2023_primary_raw"]) || 0,
+                    unit: "%",
+                    field: "completion_rate_2000_2023_primary_raw"
+                },
+                {
+                    name: "Basic Sanitation",
+                    value: parseFloat(data["basic_sanitation_household_perc_2022_raw"]) || 0,
+                    unit: "%",
+                    field: "basic_sanitation_household_perc_2022_raw"
+                }
+            ];
+            
+            // Filter out stats with no data
+            const validStats = stats.filter(s => s.value > 0);
+            
+            if (validStats.length === 0) {
+                return;
+            }
+            
+            // Calculate position - try to position near the clicked country's centroid
+            let bubbleX, bubbleY;
+            const bubbleChartRadius = 100; // Approximate radius of the bubble chart (for boundary checking)
+            
+            if (countryGeoData) {
+                const centroid = path.centroid(countryGeoData);
+                bubbleX = centroid[0];
+                bubbleY = centroid[1];
+                
+                // Only adjust if bubble would be off-screen, keep it within bounds
+                if (bubbleX < bubbleChartRadius) bubbleX = bubbleChartRadius;
+                if (bubbleX > width - bubbleChartRadius) bubbleX = width - bubbleChartRadius;
+                if (bubbleY < bubbleChartRadius) bubbleY = bubbleChartRadius;
+                if (bubbleY > height - bubbleChartRadius) bubbleY = height - bubbleChartRadius;
+            } else {
+                // Default position (center)
+                bubbleX = width / 2;
+                bubbleY = height / 2;
+            }
+            
+            // Bubble chart dimensions - smaller and more compact
+            const bubbleRadius = 25; // Smaller fixed size for all bubbles
+            const chartWidth = 220;
+            const chartHeight = 180;
+            
+            // Create overlay group - centered on the position
+            const overlay = svg.append("g")
+                .attr("class", "bubble-overlay")
+                .attr("transform", `translate(${bubbleX}, ${bubbleY})`);
+            
+            // Create color scale
+            const colors = d3.scaleOrdinal()
+                .domain(validStats.map((d, i) => i))
+                .range(["#4a90e2", "#50c878", "#ff6b6b", "#ffa500", "#9b59b6"]);
+            
+            // Position bubbles in a circle - all same size, tighter spacing
+            const centerX = 0;
+            const centerY = 0;
+            const radius = 50; // Distance from center - smaller
+            
+            validStats.forEach((stat, i) => {
+                const angle = (i * 2 * Math.PI) / validStats.length - Math.PI / 2;
+                const x = centerX + radius * Math.cos(angle);
+                const y = centerY + radius * Math.sin(angle);
+                
+                // Draw bubble (all same size)
+                overlay.append("circle")
+                    .attr("class", "bubble")
+                    .attr("cx", x)
+                    .attr("cy", y)
+                    .attr("r", bubbleRadius)
+                    .attr("fill", colors(i))
+                    .attr("data-stat", stat.name)
+                    .on("mouseover", function(event) {
+                        d3.select(this).attr("stroke-width", 3);
+                        showBubbleTooltip(event, stat);
+                    })
+                    .on("mouseout", function() {
+                        d3.select(this).attr("stroke-width", 2);
+                        hideBubbleTooltip();
+                    });
+                
+                // Add value label inside bubble (center)
+                const fmtValue = stat.value >= 1000 ? 
+                    (stat.value / 1000).toFixed(1) + "k" : 
+                    stat.value.toFixed(stat.unit === "%" ? 1 : 0);
+                overlay.append("text")
+                    .attr("class", "bubble-value")
+                    .attr("x", x)
+                    .attr("y", y + 2)
+                    .text(fmtValue)
+                    .style("font-size", "11px")
+                    .style("font-weight", "bold");
+                
+                // Add unit label inside bubble (below value)
+                overlay.append("text")
+                    .attr("class", "bubble-value")
+                    .attr("x", x)
+                    .attr("y", y + 14)
+                    .text(stat.unit)
+                    .style("font-size", "8px");
+            });
+            
+        }
+        
+        // Bubble chart tooltip
+        function showBubbleTooltip(event, stat) {
+            tooltip
+                .style("opacity", 1)
+                .html(`<strong>${stat.name}</strong><br/>${stat.value.toFixed(1)} ${stat.unit}`)
+                .style("left", (event.pageX + 10) + "px")
+                .style("top", (event.pageY - 10) + "px");
+        }
+        
+        function hideBubbleTooltip() {
+            tooltip.style("opacity", 0);
         }
         
         // Function to load CSV data
@@ -482,11 +848,18 @@
                     // Apply colors to any already-rendered countries
                     updateCountryColors();
                     
+                    // Update legend to show current metric
+                    updateLegend();
+                    
                     // If a country is currently selected, update its display
                     if (selectedCountry) {
                         const data = findCountryData(selectedCountry);
                         if (data) {
-                            displayCountryData(data);
+                            // Find the geo data for the selected country
+                            const geoFeature = countries.features.find(d => 
+                                (d.properties.NAME || d.properties.name || "Unknown") === selectedCountry
+                            );
+                            displayCountryData(data, geoFeature);
                         }
                     }
                 })
@@ -503,6 +876,7 @@
                 activeMetricKey = this.value;
                 wellbeingColorScale = null; // force rebuild for new metric
                 updateCountryColors();
+                updateLegend(); // Update legend to show current metric
             });
         });
 
@@ -518,6 +892,145 @@
         // Function to hide tooltip
         function hideTooltip() {
             tooltip.style("opacity", 0);
+        }
+        
+        // Function to create the static legend on the left side
+        function createBubbleLegend() {
+            const legendContainer = document.getElementById("legend-items");
+            if (!legendContainer) return;
+            
+            legendContainer.innerHTML = "";
+            
+            // Section 1: Map Color Scale
+            const colorScaleSection = document.createElement("div");
+            colorScaleSection.className = "legend-section";
+            
+            const colorScaleTitle = document.createElement("div");
+            colorScaleTitle.className = "legend-section-title";
+            colorScaleTitle.textContent = "Map Color Scale";
+            colorScaleSection.appendChild(colorScaleTitle);
+            
+            const scaleDiv = document.createElement("div");
+            scaleDiv.className = "legend-color-scale";
+            colorScaleSection.appendChild(scaleDiv);
+            
+            const scaleLabels = document.createElement("div");
+            scaleLabels.className = "legend-scale-labels";
+            scaleLabels.innerHTML = "<span>Low</span><span>High</span>";
+            colorScaleSection.appendChild(scaleLabels);
+            
+            const currentMetric = metricConfig[activeMetricKey];
+            if (currentMetric) {
+                const metricLabel = document.createElement("div");
+                metricLabel.className = "legend-item-text";
+                metricLabel.style.marginTop = "4px";
+                metricLabel.style.fontStyle = "italic";
+                metricLabel.textContent = `Current: ${currentMetric.label}`;
+                colorScaleSection.appendChild(metricLabel);
+            }
+            
+            legendContainer.appendChild(colorScaleSection);
+            
+            // Section 2: Country States
+            const statesSection = document.createElement("div");
+            statesSection.className = "legend-section";
+            
+            const statesTitle = document.createElement("div");
+            statesTitle.className = "legend-section-title";
+            statesTitle.textContent = "Country States";
+            statesSection.appendChild(statesTitle);
+            
+            // Selected country
+            const selectedDiv = document.createElement("div");
+            selectedDiv.className = "legend-item-container";
+            const selectedOutline = document.createElement("div");
+            selectedOutline.className = "legend-outline";
+            const selectedText = document.createElement("div");
+            selectedText.className = "legend-item-text";
+            selectedText.textContent = "Selected country";
+            selectedDiv.appendChild(selectedOutline);
+            selectedDiv.appendChild(selectedText);
+            statesSection.appendChild(selectedDiv);
+            
+            // Hover state
+            const hoverDiv = document.createElement("div");
+            hoverDiv.className = "legend-item-container";
+            const hoverOutline = document.createElement("div");
+            hoverOutline.className = "legend-outline-hover";
+            const hoverText = document.createElement("div");
+            hoverText.className = "legend-item-text";
+            hoverText.textContent = "Hover";
+            hoverDiv.appendChild(hoverOutline);
+            hoverDiv.appendChild(hoverText);
+            statesSection.appendChild(hoverDiv);
+            
+            // No data
+            const noDataDiv = document.createElement("div");
+            noDataDiv.className = "legend-item-container";
+            const noDataBox = document.createElement("div");
+            noDataBox.className = "legend-grey";
+            const noDataText = document.createElement("div");
+            noDataText.className = "legend-item-text";
+            noDataText.textContent = "No data available";
+            noDataDiv.appendChild(noDataBox);
+            noDataDiv.appendChild(noDataText);
+            statesSection.appendChild(noDataDiv);
+            
+            legendContainer.appendChild(statesSection);
+            
+            // Section 3: Bubble Chart Statistics
+            const bubbleSection = document.createElement("div");
+            bubbleSection.className = "legend-section";
+            
+            const bubbleTitle = document.createElement("div");
+            bubbleTitle.className = "legend-section-title";
+            bubbleTitle.textContent = "Bubble Chart Statistics";
+            bubbleSection.appendChild(bubbleTitle);
+            
+            // Define all 5 statistics with their colors (same order as in bubble chart)
+            const stats = [
+                { name: "Life Expectancy", color: "#4a90e2" },
+                { name: "Population <18", color: "#50c878" },
+                { name: "Mortality Rate", color: "#ff6b6b" },
+                { name: "Primary Completion", color: "#ffa500" },
+                { name: "Basic Sanitation", color: "#9b59b6" }
+            ];
+            
+            stats.forEach(stat => {
+                const itemDiv = document.createElement("div");
+                itemDiv.className = "legend-item-container";
+                
+                const circleDiv = document.createElement("div");
+                circleDiv.className = "legend-color-circle";
+                circleDiv.style.backgroundColor = stat.color;
+                
+                const textDiv = document.createElement("div");
+                textDiv.className = "legend-item-text";
+                textDiv.textContent = stat.name;
+                
+                itemDiv.appendChild(circleDiv);
+                itemDiv.appendChild(textDiv);
+                bubbleSection.appendChild(itemDiv);
+            });
+            
+            legendContainer.appendChild(bubbleSection);
+        }
+        
+        // Function to update the legend when metric changes
+        function updateLegend() {
+            createBubbleLegend();
+        }
+        
+        // Create the static legend on page load
+        createBubbleLegend();
+        
+        // Add collapsible functionality to legend
+        const legendToggle = document.getElementById("legend-toggle");
+        const legend = document.getElementById("bubble-legend");
+        if (legendToggle && legend) {
+            legendToggle.addEventListener("click", function() {
+                legend.classList.toggle("collapsed");
+            });
         }
         
         // Load CSV data automatically

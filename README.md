@@ -12,21 +12,22 @@ An interactive D3.js world map visualization that displays country data when you
 ## How to Use
 
 1. **Open the visualization**: Simply open `index.html` in a web browser
+
    - You can double-click the file, or
    - Use a local web server (recommended for loading CSV files):
      ```bash
      # Using Python 3
-     python -m http.server 8000
-     
+     python3 -m http.server 8000
+
      # Then open: http://localhost:8000
      ```
-
 2. **Interact with the map**:
+
    - **Hover** over countries to see their names
    - **Click** on any country to view its data in the info panel below
    - The selected country will be highlighted in blue
-
 3. **View country data**: When you click a country, the info panel will display:
+
    - Ladder score
    - GDP per capita
    - Social support
@@ -60,4 +61,3 @@ You can customize the visualization by:
 - The map data is loaded from a CDN (requires internet connection)
 - Some country names may not match exactly between the map and CSV - the code includes smart matching to handle common variations
 - If a country doesn't have data, a message will be displayed
-
