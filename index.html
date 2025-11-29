@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive World Map - D3.js</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/topojson@3"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        #map-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 600px;
+        }
+        
+        .country {
+            fill: #e0e0e0;
+            stroke: #fff;
+            stroke-width: 0.5px;
+            cursor: pointer;
+            transition: fill 0.2s;
+        }
+        
+        .country:hover {
+            fill: #4a90e2;
+            stroke-width: 1px;
+        }
+        
+        .country.selected {
+            fill: #2c5aa0;
+            stroke: #1a3d6b;
+            stroke-width: 1.5px;
+        }
+        
+        #info-panel {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            border-left: 4px solid #4a90e2;
+            min-height: 100px;
+        }
+        
+        #info-panel h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        
+        #info-panel p {
+            margin: 5px 0;
+            color: #666;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: #666;
+        }
+        
+        .tooltip {
+            position: absolute;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Interactive World Map</h1>
+        <p class="subtitle">Click on any country to view its data</p>
+        
+        <div id="map-container">
+            <div class="loading">Loading world map...</div>
+        </div>
+        
+        <div id="info-panel" style="display: none;">
+            <h3 id="country-name">Select a country</h3>
+            <div id="country-data"></div>
+        </div>
+    </div>
+    
+    <div class="tooltip" id="tooltip"></div>
+    
+    <script>
+        // Set up dimensions and projection
+        const width = 1200;
+        const height = 600;
+        const margin = { top: 20, right: 20, bottom: 20, left: 20 };
+        
+        // Create SVG
+        const svg = d3.select("#map-container")
+            .html("") // Clear loading message
+            .append("svg")
+            .attr("width", width)
+            .attr("height", height);
+        
+        // Create tooltip
+        const tooltip = d3.select("#tooltip");
+        
+        // Create projection (Mercator projection)
+        const projection = d3.geoMercator()
+            .scale(width / 6.5)
+            .translate([width / 2, height / 1.5]);
+        
+        // Create path generator
+        const path = d3.geoPath().projection(projection);
+        
+        // Store country data
+        let countryData = {};
+        let selectedCountry = null;
+        
+        // Country name mapping for common variations
+        const countryNameMap = {
+            "United States of America": "United States",
+            "Russian Federation": "Russia",
+            "United Kingdom": "United Kingdom",
+            "Czech Republic": "Czechia",
+            "Republic of the Congo": "Congo (Brazzaville)",
+            "Democratic Republic of the Congo": "Congo (Kinshasa)",
+            "Myanmar": "Myanmar",
+            "Palestine": "State of Palestine",
+            "Syria": "Syrian Arab Republic",
+            "South Korea": "South Korea",
+            "North Korea": "North Korea",
+            "Iran": "Iran",
+            "Laos": "Laos",
+            "Vietnam": "Vietnam",
+            "Macedonia": "North Macedonia"
+        };
+        
+        // Function to find matching country data
+        function findCountryData(countryName) {
+            // Direct match
+            if (countryData[countryName]) {
+                return countryData[countryName];
+            }
+            
+            // Check mapped names
+            const mappedName = countryNameMap[countryName];
+            if (mappedName && countryData[mappedName]) {
+                return countryData[mappedName];
+            }
+            
+            // Try case-insensitive partial match
+            const lowerName = countryName.toLowerCase();
+            for (const csvName in countryData) {
+                if (csvName.toLowerCase() === lowerName || 
+                    csvName.toLowerCase().includes(lowerName) ||
+                    lowerName.includes(csvName.toLowerCase())) {
+                    return countryData[csvName];
+                }
+            }
+            
+            return null;
+        }
+        
+        // Load world map data from Natural Earth
+        // Using a reliable CDN source for world map TopoJSON
+        d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json")
+            .then(function(world) {
+                // Convert TopoJSON to GeoJSON
+                const countries = topojson.feature(world, world.objects.countries);
+                
+                // Draw countries
+                svg.selectAll(".country")
+                    .data(countries.features)
+                    .enter()
+                    .append("path")
+                    .attr("class", "country")
+                    .attr("d", path)
+                    .attr("data-name", d => d.properties.NAME || d.properties.name || "Unknown")
+                    .on("click", function(event, d) {
+                        const countryName = d.properties.NAME || d.properties.name || "Unknown";
+                        handleCountryClick(countryName, d);
+                    })
+                    .on("mouseover", function(event, d) {
+                        const countryName = d.properties.NAME || d.properties.name || "Unknown";
+                        showTooltip(event, countryName);
+                        
+                        // Highlight on hover
+                        d3.select(this).classed("hover", true);
+                    })
+                    .on("mouseout", function() {
+                        hideTooltip();
+                        d3.select(this).classed("hover", false);
+                    });
+                
+                console.log("World map loaded successfully!");
+            })
+            .catch(function(error) {
+                console.error("Error loading map:", error);
+                d3.select("#map-container")
+                    .html(`<div class="loading" style="color: red;">Error loading map data. Please check your internet connection or try a different data source.</div>`);
+            });
+        
+        // Function to handle country click
+        function handleCountryClick(countryName, geoData) {
+            // Remove previous selection
+            svg.selectAll(".country").classed("selected", false);
+            
+            // Add selection to clicked country
+            svg.selectAll(".country")
+                .filter(d => (d.properties.NAME || d.properties.name || "Unknown") === countryName)
+                .classed("selected", true);
+            
+            selectedCountry = countryName;
+            
+            // Show info panel
+            const infoPanel = d3.select("#info-panel");
+            infoPanel.style("display", "block");
+            
+            // Update country name
+            d3.select("#country-name").text(countryName);
+            
+            // Check if we have data for this country (with smart matching)
+            const data = findCountryData(countryName);
+            
+            if (data) {
+                // Display country data
+                displayCountryData(data);
+            } else {
+                // Show placeholder for data
+                d3.select("#country-data").html(`
+                    <p><strong>No data available for this country yet.</strong></p>
+                    <p>Data can be loaded from your CSV file and displayed here.</p>
+                    <p style="font-size: 11px; color: #999;">Map name: "${countryName}"</p>
+                `);
+            }
+        }
+        
+        // Function to display country data
+        function displayCountryData(data) {
+            let html = "";
+            
+            // Display all available data fields
+            for (const [key, value] of Object.entries(data)) {
+                if (key !== "Country name" && value !== "" && value != null) {
+                    // Format the key name (replace underscores, capitalize)
+                    const formattedKey = key.replace(/_/g, " ")
+                        .replace(/\b\w/g, l => l.toUpperCase());
+                    html += `<p><strong>${formattedKey}:</strong> ${value}</p>`;
+                }
+            }
+            
+            d3.select("#country-data").html(html);
+        }
+        
+        // Function to load CSV data
+        function loadCountryData(csvPath) {
+            d3.csv(csvPath)
+                .then(function(data) {
+                    // Process CSV data
+                    data.forEach(function(row) {
+                        const countryName = row["Country name"];
+                        if (countryName) {
+                            // Store all data for this country
+                            countryData[countryName] = row;
+                        }
+                    });
+                    
+                    console.log(`Loaded data for ${Object.keys(countryData).length} countries`);
+                    
+                    // If a country is currently selected, update its display
+                    if (selectedCountry) {
+                        const data = findCountryData(selectedCountry);
+                        if (data) {
+                            displayCountryData(data);
+                        }
+                    }
+                })
+                .catch(function(error) {
+                    console.error("Error loading CSV:", error);
+                });
+        }
+        
+        // Function to show tooltip
+        function showTooltip(event, countryName) {
+            tooltip
+                .style("opacity", 1)
+                .html(countryName)
+                .style("left", (event.pageX + 10) + "px")
+                .style("top", (event.pageY - 10) + "px");
+        }
+        
+        // Function to hide tooltip
+        function hideTooltip() {
+            tooltip.style("opacity", 0);
+        }
+        
+        // Load CSV data automatically
+        loadCountryData("WHR23_Data_Figure_2.1.csv");
+    </script>
+</body>
+</html>
