@@ -206,6 +206,19 @@
         #map-svg-container svg {
             max-width: 100%;
             height: auto;
+            cursor: grab;
+        }
+
+        #map-svg-container svg:active {
+            cursor: grabbing;
+        }
+
+        .map-group {
+            cursor: grab;
+        }
+
+        .map-group:active {
+            cursor: grabbing;
         }
 
         .controls {
@@ -430,7 +443,7 @@
 <body>
     <div class="container">
         <h1>Interactive World Map</h1>
-        <p class="subtitle">Click on any country to view its data</p>
+        <p class="subtitle">Click on any country to view its data • Scroll to zoom, drag to pan</p>
         
         <div id="map-container">
             <div id="map-wrapper">
@@ -500,6 +513,9 @@
             .attr("viewBox", `0 0 ${width} ${height}`)
             .attr("preserveAspectRatio", "xMidYMid meet");
         
+        // Create a group for all map elements that will be transformed by zoom
+        const mapGroup = svg.append("g").attr("class", "map-group");
+        
         // Create tooltip
         const tooltip = d3.select("#tooltip");
         
@@ -510,6 +526,16 @@
         
         // Create path generator
         const path = d3.geoPath().projection(projection);
+        
+        // Create zoom behavior
+        const zoom = d3.zoom()
+            .scaleExtent([0.5, 8]) // Limit zoom between 0.5x and 8x
+            .on("zoom", function(event) {
+                mapGroup.attr("transform", event.transform);
+            });
+        
+        // Apply zoom to SVG
+        svg.call(zoom);
         
         // Store country data (keyed by CSV "country" column)
         let countryData = {};
@@ -625,7 +651,7 @@
             if (!metric) return;
             const fieldName = metric.field;
 
-            svg.selectAll(".country")
+            mapGroup.selectAll(".country")
                 .style("fill", function(d) {
                     const name = d.properties.NAME || d.properties.name || "Unknown";
                     const data = findCountryData(name);
@@ -649,8 +675,8 @@
                 // Convert TopoJSON to GeoJSON
                 const countries = topojson.feature(world, world.objects.countries);
                 
-                // Draw countries
-                svg.selectAll(".country")
+                // Draw countries in the map group
+                mapGroup.selectAll(".country")
                     .data(countries.features)
                     .enter()
                     .append("path")
@@ -658,6 +684,7 @@
                     .attr("d", path)
                     .attr("data-name", d => d.properties.NAME || d.properties.name || "Unknown")
                     .on("click", function(event, d) {
+                        event.stopPropagation(); // Prevent zoom on click
                         const countryName = d.properties.NAME || d.properties.name || "Unknown";
                         handleCountryClick(countryName, d);
                     })
@@ -697,10 +724,10 @@
             }
 
             // Remove previous selection
-            svg.selectAll(".country").classed("selected", false);
+            mapGroup.selectAll(".country").classed("selected", false);
             
             // Add selection to clicked country
-            svg.selectAll(".country")
+            mapGroup.selectAll(".country")
                 .filter(d => (d.properties.NAME || d.properties.name || "Unknown") === countryName)
                 .classed("selected", true);
             
@@ -1069,7 +1096,7 @@
         // Function to create bubble chart for the 5 key statistics on the map
         function createBubbleChart(data, countryGeoData) {
             // Remove any existing bubble overlay
-            svg.selectAll(".bubble-overlay").remove();
+            mapGroup.selectAll(".bubble-overlay").remove();
             
             // Define the 5 key statistics with both raw values (for display) and z-score fields (for coloring)
             const stats = [
@@ -1142,8 +1169,8 @@
             const chartWidth = 220;
             const chartHeight = 180;
             
-            // Create overlay group - centered on the position
-            const overlay = svg.append("g")
+            // Create overlay group - centered on the position (in mapGroup so it zooms with map)
+            const overlay = mapGroup.append("g")
                 .attr("class", "bubble-overlay")
                 .attr("transform", `translate(${bubbleX}, ${bubbleY})`);
             
