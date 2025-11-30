@@ -206,6 +206,19 @@
         #map-svg-container svg {
             max-width: 100%;
             height: auto;
+            cursor: grab;
+        }
+
+        #map-svg-container svg:active {
+            cursor: grabbing;
+        }
+
+        .map-group {
+            cursor: grab;
+        }
+
+        .map-group:active {
+            cursor: grabbing;
         }
 
         .controls {
@@ -255,14 +268,33 @@
         
         #info-panel {
             margin-top: 20px;
-            padding: 15px;
+            padding: 20px;
             background-color: #f9f9f9;
             border-radius: 5px;
             border-left: 4px solid #4a90e2;
-            min-height: 100px;
+            min-height: 400px;
             position: relative;
             transform: translateY(0);
             transition: transform 0.35s ease, box-shadow 0.35s ease;
+        }
+
+        #data-description {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #ddd;
+        }
+
+        #data-description h4 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 14px;
+        }
+
+        #data-description p {
+            margin: 8px 0;
+            color: #666;
+            font-size: 12px;
         }
 
         /* Temporary "pop" effect to draw attention when a country is selected */
@@ -274,11 +306,77 @@
         #info-panel h3 {
             margin-top: 0;
             color: #333;
+            margin-bottom: 20px;
         }
         
         #info-panel p {
             margin: 5px 0;
             color: #666;
+        }
+
+        #tree-container {
+            display: flex;
+            gap: 40px;
+            justify-content: space-around;
+            min-height: 350px;
+        }
+
+        .tree-wrapper {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .tree-svg {
+            width: 100%;
+            height: 350px;
+        }
+
+        .tree-node {
+            cursor: pointer;
+        }
+
+        .tree-node circle {
+            fill: #fff;
+            stroke: #4a90e2;
+            stroke-width: 2px;
+        }
+
+        .tree-node.root circle {
+            fill: #4a90e2;
+            stroke: #2c5aa0;
+            stroke-width: 3px;
+            r: 60;
+        }
+
+        .tree-node.leaf circle {
+            r: 8;
+        }
+
+        .tree-node text {
+            font-size: 11px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .tree-node.root text {
+            font-weight: bold;
+            font-size: 14px;
+            fill: #000;
+        }
+
+        .tree-node.leaf text {
+            fill: #333;
+        }
+
+        .tree-link {
+            fill: none;
+            stroke: #ccc;
+            stroke-width: 1.5px;
+        }
+
+        .tree-value {
+            font-size: 10px;
+            fill: #666;
+            font-style: italic;
         }
         
         .loading {
@@ -331,13 +429,21 @@
             fill: #333;
         }
 
+        .bubble-dimension-label {
+            text-anchor: middle;
+            pointer-events: none;
+            fill: #333;
+            font-size: 10px;
+            font-weight: 500;
+        }
+
 
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Interactive World Map</h1>
-        <p class="subtitle">Click on any country to view its data</p>
+        <p class="subtitle">Click on any country to view its data • Scroll to zoom, drag to pan</p>
         
         <div id="map-container">
             <div id="map-wrapper">
@@ -372,6 +478,9 @@
                             </label>
                         </div>
                         <div id="legend-items"></div>
+                        <div id="bubble-description" style="margin-top: 20px; padding: 12px; background-color: #f0f0f0; border-radius: 4px; font-size: 11px; line-height: 1.5; color: #333;">
+                            <strong>Bubble Chart:</strong> When you select a country, branching bubbles appear showing key data dimensions. Each bubble's color hue encodes the z-score of that dimension using the magma color scale (darker = lower z-score, lighter = higher z-score).
+                        </div>
                     </div>
                 </div>
                 <div id="map-svg-container">
@@ -382,7 +491,7 @@
         
         <div id="info-panel">
             <h3 id="country-name">Select a country to view details!</h3>
-            <div id="country-data"></div>
+            <div id="tree-container"></div>
         </div>
 
     </div>
@@ -404,6 +513,9 @@
             .attr("viewBox", `0 0 ${width} ${height}`)
             .attr("preserveAspectRatio", "xMidYMid meet");
         
+        // Create a group for all map elements that will be transformed by zoom
+        const mapGroup = svg.append("g").attr("class", "map-group");
+        
         // Create tooltip
         const tooltip = d3.select("#tooltip");
         
@@ -414,6 +526,16 @@
         
         // Create path generator
         const path = d3.geoPath().projection(projection);
+        
+        // Create zoom behavior
+        const zoom = d3.zoom()
+            .scaleExtent([0.5, 8]) // Limit zoom between 0.5x and 8x
+            .on("zoom", function(event) {
+                mapGroup.attr("transform", event.transform);
+            });
+        
+        // Apply zoom to SVG
+        svg.call(zoom);
         
         // Store country data (keyed by CSV "country" column)
         let countryData = {};
@@ -529,7 +651,7 @@
             if (!metric) return;
             const fieldName = metric.field;
 
-            svg.selectAll(".country")
+            mapGroup.selectAll(".country")
                 .style("fill", function(d) {
                     const name = d.properties.NAME || d.properties.name || "Unknown";
                     const data = findCountryData(name);
@@ -553,8 +675,8 @@
                 // Convert TopoJSON to GeoJSON
                 const countries = topojson.feature(world, world.objects.countries);
                 
-                // Draw countries
-                svg.selectAll(".country")
+                // Draw countries in the map group
+                mapGroup.selectAll(".country")
                     .data(countries.features)
                     .enter()
                     .append("path")
@@ -562,6 +684,7 @@
                     .attr("d", path)
                     .attr("data-name", d => d.properties.NAME || d.properties.name || "Unknown")
                     .on("click", function(event, d) {
+                        event.stopPropagation(); // Prevent zoom on click
                         const countryName = d.properties.NAME || d.properties.name || "Unknown";
                         handleCountryClick(countryName, d);
                     })
@@ -601,10 +724,10 @@
             }
 
             // Remove previous selection
-            svg.selectAll(".country").classed("selected", false);
+            mapGroup.selectAll(".country").classed("selected", false);
             
             // Add selection to clicked country
-            svg.selectAll(".country")
+            mapGroup.selectAll(".country")
                 .filter(d => (d.properties.NAME || d.properties.name || "Unknown") === countryName)
                 .classed("selected", true);
             
@@ -634,90 +757,383 @@
             
         }
         
-        // Function to display country data
+        // Helper to check if value is missing
+        function isMissing(v) {
+            return v === null || v === undefined || v === "" || isNaN(+v);
+        }
+
+        // Helper to safely format numeric values
+        function fmt(v, digits = 1) {
+            if (isMissing(v)) return "Data not available";
+            const num = +v;
+            return Number.isInteger(num) ? num.toString() : num.toFixed(digits);
+        }
+
+        // Function to display country data as tree
         function displayCountryData(data, geoData) {
-            // Helper to safely format numeric values
-            const fmt = (v, digits = 1) => {
-                if (v === null || v === undefined || v === "" || isNaN(+v)) return "Data not available";
-                const num = +v;
-                // Don't over‑round integers
-                return Number.isInteger(num) ? num.toString() : num.toFixed(digits);
-            };
-
-            const lines = [];
-
-            // Life expectancy (years)
-            lines.push(`<p><strong>Life expectancy at birth (years, 2023):</strong> ${fmt(data["life_expectancy_at_birth_2023_raw"], 1)}</p>`);
-
-            // Population under 18 (thousands)
-            lines.push(`<p><strong>Population under 18 (thousands, 2023):</strong> ${fmt(data["population_2023_thousands_under18"], 1)}</p>`);
-
-            // Mortality rate 5–14
-            lines.push(`<p><strong>Mortality rate (ages 5–14, 2022, per 100,000 children):</strong> ${fmt(data["among5_14_mortality_rate_2022_raw"], 1)}</p>`);
-
-            // Primary completion rate
-            lines.push(`<p><strong>Primary school completion rate (2000–2023, %):</strong> ${fmt(data["completion_rate_2000_2023_primary_raw"], 1)}</p>`);
-
-            // Basic sanitation
-            lines.push(`<p><strong>Households with basic sanitation services (%, 2022):</strong> ${fmt(data["basic_sanitation_household_perc_2022_raw"], 1)}</p>`);
-
-            // Stunting
-            lines.push(`<p><strong>Children with stunted growth (%, 2022):</strong> ${fmt(data["stunted_perc_2022_raw"], 1)}</p>`);
-
-            // PM2.5
-            lines.push(`<p><strong>Mean annual PM2.5 exposure (µg/m³):</strong> ${fmt(data["pm25_latest_raw"], 1)}</p>`);
-
-            // Internet access
-            lines.push(`<p><strong>Population with internet access (latest %, all ages):</strong> ${fmt(data["internet_latest_raw"], 1)}</p>`);
-
-            // GDP per person
-            lines.push(`<p><strong>GDP per person (latest, US$ PPP or constant prices):</strong> ${fmt(data["gdp_latest_raw"], 0)}</p>`);
-
-            // Happiness rank
-            lines.push(`<p><strong>Happiness rank (World Happiness Report):</strong> ${fmt(data["happiness_rank_raw"], 0)}</p>`);
-
-            d3.select("#country-data").html(lines.join(""));
+            // Clear previous trees
+            d3.select("#tree-container").html("");
+            d3.select("#data-description").remove();
+            
+            // Create tree for aggregate index
+            createIndexTree(data);
+            
+            // Create tree for other statistics
+            createOtherStatsTree(data);
+            
+            // Create description section
+            createDataDescription(data);
             
             // Create bubble chart on the map
             createBubbleChart(data, geoData);
         }
-        
-        // Function to create bubble chart for the 5 key statistics on the map
-        function createBubbleChart(data, countryGeoData) {
-            // Remove any existing bubble overlay
-            svg.selectAll(".bubble-overlay").remove();
+
+        // Function to create data description section
+        function createDataDescription(data) {
+            const infoPanel = d3.select("#info-panel");
+            const descriptionDiv = infoPanel.append("div").attr("id", "data-description");
             
-            // Define the 5 key statistics
-            const stats = [
+            descriptionDiv.append("h4").text("Data Dimensions");
+            
+            const dimensions = [
                 {
-                    name: "Life Expectancy",
-                    value: parseFloat(data["life_expectancy_at_birth_2023_raw"]) || 0,
-                    unit: "years",
-                    field: "life_expectancy_at_birth_2023_raw"
+                    label: "Life expectancy at birth (years, 2023):",
+                    value: data["life_expectancy_at_birth_2023_raw"]
                 },
                 {
-                    name: "Population <18",
-                    value: parseFloat(data["population_2023_thousands_under18"]) || 0,
-                    unit: "thousands",
-                    field: "population_2023_thousands_under18"
+                    label: "Population under 18 (thousands, 2023):",
+                    value: data["population_2023_thousands_under18"]
                 },
                 {
-                    name: "Mortality Rate",
-                    value: parseFloat(data["among5_14_mortality_rate_2022_raw"]) || 0,
+                    label: "Mortality rate (ages 5–14, 2022, per 100,000 children):",
+                    value: data["among5_14_mortality_rate_2022_raw"]
+                },
+                {
+                    label: "Primary school completion rate (2000–2023, %):",
+                    value: data["completion_rate_2000_2023_primary_raw"]
+                },
+                {
+                    label: "Households with basic sanitation services (%, 2022):",
+                    value: data["basic_sanitation_household_perc_2022_raw"]
+                },
+                {
+                    label: "Children with stunted growth (%, 2022):",
+                    value: data["stunted_perc_2022_raw"]
+                },
+                {
+                    label: "Mean annual PM2.5 exposure (µg/m³):",
+                    value: data["pm25_latest_raw"]
+                },
+                {
+                    label: "Population with internet access (latest %, all ages):",
+                    value: data["internet_latest_raw"]
+                },
+                {
+                    label: "GDP per person (latest, US$ PPP or constant prices):",
+                    value: data["gdp_latest_raw"]
+                },
+                {
+                    label: "Happiness rank (World Happiness Report):",
+                    value: data["happiness_rank_raw"]
+                }
+            ];
+            
+            dimensions.forEach(dim => {
+                descriptionDiv.append("p")
+                    .html(`<strong>${dim.label}</strong> ${fmt(dim.value, dim.label.includes("GDP") || dim.label.includes("rank") ? 0 : 1)}`);
+            });
+        }
+
+        // Function to create the aggregate index tree
+        function createIndexTree(data) {
+            const container = d3.select("#tree-container");
+            const treeWrapper = container.append("div").attr("class", "tree-wrapper");
+            
+            const width = 500;
+            const height = 350;
+            const margin = { top: 20, right: 20, bottom: 20, left: 20 };
+            
+            const svg = treeWrapper.append("svg")
+                .attr("class", "tree-svg")
+                .attr("width", width)
+                .attr("height", height);
+            
+            const g = svg.append("g")
+                .attr("transform", `translate(${margin.left},${margin.top})`);
+            
+            // Get aggregate index z-score
+            const aggregateIndex = isMissing(data["child_wellbeing_index"]) ? null : parseFloat(data["child_wellbeing_index"]);
+            
+            // Define dimensions that contribute to aggregate index
+            const indexDimensions = [
+                {
+                    name: "Mortality Rate (ages 5-14)",
+                    rawValue: data["among5_14_mortality_rate_2022_raw"],
                     unit: "per 100k",
                     field: "among5_14_mortality_rate_2022_raw"
                 },
                 {
                     name: "Primary Completion",
-                    value: parseFloat(data["completion_rate_2000_2023_primary_raw"]) || 0,
+                    rawValue: data["completion_rate_2000_2023_primary_raw"],
                     unit: "%",
                     field: "completion_rate_2000_2023_primary_raw"
                 },
                 {
                     name: "Basic Sanitation",
-                    value: parseFloat(data["basic_sanitation_household_perc_2022_raw"]) || 0,
+                    rawValue: data["basic_sanitation_household_perc_2022_raw"],
                     unit: "%",
                     field: "basic_sanitation_household_perc_2022_raw"
+                },
+                {
+                    name: "Stunted Growth",
+                    rawValue: data["stunted_perc_2022_raw"],
+                    unit: "%",
+                    field: "stunted_perc_2022_raw"
+                },
+                {
+                    name: "Internet Access",
+                    rawValue: data["internet_latest_raw"],
+                    unit: "%",
+                    field: "internet_latest_raw"
+                },
+                {
+                    name: "Happiness Rank",
+                    rawValue: data["happiness_rank_raw"],
+                    unit: "",
+                    field: "happiness_rank_raw"
+                }
+            ];
+            
+            // Build tree data structure
+            const root = {
+                name: "Aggregate Index",
+                value: aggregateIndex,
+                zScore: isMissing(aggregateIndex) ? "Data not available" : fmt(aggregateIndex, 2),
+                children: indexDimensions.map(dim => ({
+                    name: dim.name,
+                    value: isMissing(dim.rawValue) ? null : parseFloat(dim.rawValue),
+                    unit: dim.unit,
+                    rawValue: dim.rawValue,
+                    isMissing: isMissing(dim.rawValue)
+                }))
+            };
+            
+            // Create tree layout (horizontal: height is x, width is y)
+            const treeLayout = d3.tree()
+                .size([height - margin.top - margin.bottom - 40, width - margin.left - margin.right - 200]);
+            
+            const rootNode = d3.hierarchy(root);
+            treeLayout(rootNode);
+            
+            // Draw links
+            const links = g.selectAll(".tree-link")
+                .data(rootNode.links())
+                .enter()
+                .append("path")
+                .attr("class", "tree-link")
+                .attr("d", d3.linkHorizontal()
+                    .x(d => d.y + 100)
+                    .y(d => d.x));
+            
+            // Draw nodes
+            const nodes = g.selectAll(".tree-node")
+                .data(rootNode.descendants())
+                .enter()
+                .append("g")
+                .attr("class", d => d.depth === 0 ? "tree-node root" : "tree-node leaf")
+                .attr("transform", d => `translate(${d.y + 100},${d.x})`);
+            
+            // Add circles first (so they appear behind text)
+            nodes.append("circle");
+            
+            // Add text labels (on top of circles)
+            const textLabels = nodes.append("text")
+                .attr("dy", d => d.depth === 0 ? -15 : 4)
+                .attr("dx", d => d.depth === 0 ? 0 : 12)
+                .attr("text-anchor", d => d.depth === 0 ? "middle" : "start")
+                .text(d => d.data.name);
+            
+            // Add z-score for root node
+            const zScoreLabels = nodes.filter(d => d.depth === 0)
+                .append("text")
+                .attr("class", "tree-value")
+                .attr("dy", 20)
+                .attr("dx", 0)
+                .attr("text-anchor", "middle")
+                .style("font-size", "11px")
+                .style("fill", "#666")
+                .text(d => {
+                    if (d.data.zScore === "Data not available") {
+                        return d.data.zScore;
+                    }
+                    return `z-score: ${d.data.zScore}`;
+                });
+            
+            // Add values for leaf nodes
+            nodes.filter(d => d.depth > 0)
+                .append("text")
+                .attr("class", "tree-value")
+                .attr("dy", 16)
+                .attr("dx", 12)
+                .attr("text-anchor", "start")
+                .text(d => {
+                    if (d.data.isMissing) {
+                        return "Data not available";
+                    }
+                    const val = fmt(d.data.value, d.data.unit === "%" ? 1 : (d.data.unit === "US$" ? 0 : 1));
+                    return `${val} ${d.data.unit}`;
+                });
+        }
+
+        // Function to create the other statistics tree
+        function createOtherStatsTree(data) {
+            const container = d3.select("#tree-container");
+            const treeWrapper = container.append("div").attr("class", "tree-wrapper");
+            
+            const width = 500;
+            const height = 350;
+            const margin = { top: 20, right: 20, bottom: 20, left: 20 };
+            
+            const svg = treeWrapper.append("svg")
+                .attr("class", "tree-svg")
+                .attr("width", width)
+                .attr("height", height);
+            
+            const g = svg.append("g")
+                .attr("transform", `translate(${margin.left},${margin.top})`);
+            
+            // Other statistics that don't contribute to aggregate index
+            const otherStats = [
+                {
+                    name: "Life Expectancy",
+                    rawValue: data["life_expectancy_at_birth_2023_raw"],
+                    unit: "years",
+                    field: "life_expectancy_at_birth_2023_raw"
+                },
+                {
+                    name: "PM2.5 Exposure",
+                    rawValue: data["pm25_latest_raw"],
+                    unit: "µg/m³",
+                    field: "pm25_latest_raw"
+                },
+                {
+                    name: "GDP per Capita",
+                    rawValue: data["gdp_latest_raw"],
+                    unit: "US$",
+                    field: "gdp_latest_raw"
+                },
+                {
+                    name: "Population <18",
+                    rawValue: data["population_2023_thousands_under18"],
+                    unit: "thousands",
+                    field: "population_2023_thousands_under18"
+                }
+            ];
+            
+            // Build tree data structure
+            const root = {
+                name: "Other Statistics",
+                children: otherStats.map(stat => ({
+                    name: stat.name,
+                    value: isMissing(stat.rawValue) ? null : parseFloat(stat.rawValue),
+                    unit: stat.unit,
+                    rawValue: stat.rawValue,
+                    isMissing: isMissing(stat.rawValue)
+                }))
+            };
+            
+            // Create tree layout (horizontal: height is x, width is y)
+            const treeLayout = d3.tree()
+                .size([height - margin.top - margin.bottom - 40, width - margin.left - margin.right - 200]);
+            
+            const rootNode = d3.hierarchy(root);
+            treeLayout(rootNode);
+            
+            // Draw links
+            const links = g.selectAll(".tree-link")
+                .data(rootNode.links())
+                .enter()
+                .append("path")
+                .attr("class", "tree-link")
+                .attr("d", d3.linkHorizontal()
+                    .x(d => d.y + 100)
+                    .y(d => d.x));
+            
+            // Draw nodes
+            const nodes = g.selectAll(".tree-node")
+                .data(rootNode.descendants())
+                .enter()
+                .append("g")
+                .attr("class", d => d.depth === 0 ? "tree-node root" : "tree-node leaf")
+                .attr("transform", d => `translate(${d.y + 100},${d.x})`);
+            
+            // Add circles first (so they appear behind text)
+            nodes.append("circle");
+            
+            // Add text labels (on top of circles)
+            const textLabels = nodes.append("text")
+                .attr("dy", d => d.depth === 0 ? -15 : 4)
+                .attr("dx", d => d.depth === 0 ? 0 : 12)
+                .attr("text-anchor", d => d.depth === 0 ? "middle" : "start")
+                .text(d => d.data.name);
+            
+            // Add values for leaf nodes
+            nodes.filter(d => d.depth > 0)
+                .append("text")
+                .attr("class", "tree-value")
+                .attr("dy", 16)
+                .attr("dx", 12)
+                .attr("text-anchor", "start")
+                .text(d => {
+                    if (d.data.isMissing) {
+                        return "Data not available";
+                    }
+                    const val = fmt(d.data.value, d.data.unit === "%" ? 1 : (d.data.unit === "thousands" ? 0 : 1));
+                    return `${val} ${d.data.unit}`;
+                });
+        }
+        
+        // Function to create bubble chart for the 5 key statistics on the map
+        function createBubbleChart(data, countryGeoData) {
+            // Remove any existing bubble overlay
+            mapGroup.selectAll(".bubble-overlay").remove();
+            
+            // Define the 5 key statistics with both raw values (for display) and z-score fields (for coloring)
+            const stats = [
+                {
+                    name: "Life Expectancy",
+                    value: parseFloat(data["life_expectancy_at_birth_2023_raw"]) || 0,
+                    unit: "years",
+                    rawField: "life_expectancy_at_birth_2023_raw",
+                    zScoreField: "life_expectancy_at_birth_2023"
+                },
+                {
+                    name: "Population <18",
+                    value: parseFloat(data["population_2023_thousands_under18"]) || 0,
+                    unit: "thousands",
+                    rawField: "population_2023_thousands_under18",
+                    zScoreField: null // Population doesn't have a z-score field
+                },
+                {
+                    name: "Mortality Rate",
+                    value: parseFloat(data["among5_14_mortality_rate_2022_raw"]) || 0,
+                    unit: "per 100k",
+                    rawField: "among5_14_mortality_rate_2022_raw",
+                    zScoreField: "among5_14_mortality_rate_2022"
+                },
+                {
+                    name: "Primary Completion",
+                    value: parseFloat(data["completion_rate_2000_2023_primary_raw"]) || 0,
+                    unit: "%",
+                    rawField: "completion_rate_2000_2023_primary_raw",
+                    zScoreField: "completion_rate_2000_2023_primary"
+                },
+                {
+                    name: "Basic Sanitation",
+                    value: parseFloat(data["basic_sanitation_household_perc_2022_raw"]) || 0,
+                    unit: "%",
+                    rawField: "basic_sanitation_household_perc_2022_raw",
+                    zScoreField: "basic_sanitation_household_perc_2022"
                 }
             ];
             
@@ -753,15 +1169,10 @@
             const chartWidth = 220;
             const chartHeight = 180;
             
-            // Create overlay group - centered on the position
-            const overlay = svg.append("g")
+            // Create overlay group - centered on the position (in mapGroup so it zooms with map)
+            const overlay = mapGroup.append("g")
                 .attr("class", "bubble-overlay")
                 .attr("transform", `translate(${bubbleX}, ${bubbleY})`);
-            
-            // Create color scale
-            const colors = d3.scaleOrdinal()
-                .domain(validStats.map((d, i) => i))
-                .range(["#4a90e2", "#50c878", "#ff6b6b", "#ffa500", "#9b59b6"]);
             
             // Position bubbles in a circle - all same size, tighter spacing
             const centerX = 0;
@@ -773,13 +1184,34 @@
                 const x = centerX + radius * Math.cos(angle);
                 const y = centerY + radius * Math.sin(angle);
                 
+                // Determine bubble color based on z-score using magma scale
+                let bubbleColor = "#e0e0e0"; // Default grey if no z-score available
+                
+                if (stat.zScoreField && data[stat.zScoreField] !== undefined && data[stat.zScoreField] !== "") {
+                    const zScore = parseFloat(data[stat.zScoreField]);
+                    if (!isNaN(zScore)) {
+                        // Build a magma color scale for this specific statistic based on all countries' z-scores
+                        const allRows = Object.values(countryData || {});
+                        const zScores = allRows
+                            .map(d => parseFloat(d[stat.zScoreField]))
+                            .filter(v => !isNaN(v));
+                        
+                        if (zScores.length > 0) {
+                            const extent = d3.extent(zScores);
+                            const statColorScale = d3.scaleSequential(d3.interpolateMagma)
+                                .domain(extent);
+                            bubbleColor = statColorScale(zScore);
+                        }
+                    }
+                }
+                
                 // Draw bubble (all same size)
                 overlay.append("circle")
                     .attr("class", "bubble")
                     .attr("cx", x)
                     .attr("cy", y)
                     .attr("r", bubbleRadius)
-                    .attr("fill", colors(i))
+                    .attr("fill", bubbleColor)
                     .attr("data-stat", stat.name)
                     .on("mouseover", function(event) {
                         d3.select(this).attr("stroke-width", 3);
@@ -809,6 +1241,64 @@
                     .attr("y", y + 14)
                     .text(stat.unit)
                     .style("font-size", "8px");
+                
+                // Add dimension name label outside bubble (positioned further out)
+                let labelRadius = radius + bubbleRadius + 15; // Position label outside the bubble
+                let labelX = centerX + labelRadius * Math.cos(angle);
+                let labelY = centerY + labelRadius * Math.sin(angle);
+                
+                // Apply special offsets for specific labels
+                if (stat.name === "Basic Sanitation") {
+                    // Offset up-left: move up and left
+                    labelX -= 15;
+                    labelY -= 10;
+                } else if (stat.name === "Population <18") {
+                    // Offset up-right: move up and right
+                    labelX += 15;
+                    labelY -= 10;
+                }
+                
+                // Add connecting line from bubble to label
+                overlay.append("line")
+                    .attr("class", "bubble-label-connector")
+                    .attr("x1", x)
+                    .attr("y1", y)
+                    .attr("x2", labelX)
+                    .attr("y2", labelY)
+                    .attr("stroke", "#666")
+                    .attr("stroke-width", 1)
+                    .attr("stroke-dasharray", "2,2")
+                    .style("opacity", 0.6);
+                
+                // Create a group for the label with background
+                const labelGroup = overlay.append("g")
+                    .attr("class", "bubble-dimension-label-group")
+                    .attr("transform", `translate(${labelX}, ${labelY})`);
+                
+                // Add text first to measure it
+                const labelText = labelGroup.append("text")
+                    .attr("class", "bubble-dimension-label")
+                    .attr("x", 0)
+                    .attr("y", 0)
+                    .text(stat.name)
+                    .style("font-size", "10px")
+                    .style("font-weight", "bold")
+                    .style("fill", "#333")
+                    .style("text-anchor", "middle")
+                    .style("dominant-baseline", "middle");
+                
+                // Get text bounding box and add white background rectangle
+                const textBBox = labelText.node().getBBox();
+                const padding = 4;
+                labelGroup.insert("rect", "text")
+                    .attr("x", textBBox.x - padding)
+                    .attr("y", textBBox.y - padding)
+                    .attr("width", textBBox.width + (padding * 2))
+                    .attr("height", textBBox.height + (padding * 2))
+                    .attr("fill", "white")
+                    .attr("stroke", "#333")
+                    .attr("stroke-width", 0.5)
+                    .attr("rx", 2);
             });
             
         }
@@ -978,42 +1468,8 @@
             
             legendContainer.appendChild(statesSection);
             
-            // Section 3: Bubble Chart Statistics
-            const bubbleSection = document.createElement("div");
-            bubbleSection.className = "legend-section";
-            
-            const bubbleTitle = document.createElement("div");
-            bubbleTitle.className = "legend-section-title";
-            bubbleTitle.textContent = "Bubble Chart Statistics";
-            bubbleSection.appendChild(bubbleTitle);
-            
-            // Define all 5 statistics with their colors (same order as in bubble chart)
-            const stats = [
-                { name: "Life Expectancy", color: "#4a90e2" },
-                { name: "Population <18", color: "#50c878" },
-                { name: "Mortality Rate", color: "#ff6b6b" },
-                { name: "Primary Completion", color: "#ffa500" },
-                { name: "Basic Sanitation", color: "#9b59b6" }
-            ];
-            
-            stats.forEach(stat => {
-                const itemDiv = document.createElement("div");
-                itemDiv.className = "legend-item-container";
-                
-                const circleDiv = document.createElement("div");
-                circleDiv.className = "legend-color-circle";
-                circleDiv.style.backgroundColor = stat.color;
-                
-                const textDiv = document.createElement("div");
-                textDiv.className = "legend-item-text";
-                textDiv.textContent = stat.name;
-                
-                itemDiv.appendChild(circleDiv);
-                itemDiv.appendChild(textDiv);
-                bubbleSection.appendChild(itemDiv);
-            });
-            
-            legendContainer.appendChild(bubbleSection);
+            // Section 3: Bubble Chart Statistics - REMOVED
+            // Bubble chart explanation is now in the description box
         }
         
         // Function to update the legend when metric changes
