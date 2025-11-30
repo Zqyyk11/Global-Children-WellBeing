@@ -500,10 +500,19 @@
             background-color: #f9f9f9;
             border-radius: 8px;
             border: 2px solid #4a90e2;
+            position: relative;
+            transform: translateY(0);
+            transition: transform 0.35s ease, box-shadow 0.35s ease;
         }
 
         #comparison-panel.active {
             display: block;
+        }
+
+        /* Temporary "pop" effect to draw attention when a country is selected */
+        #comparison-panel.pop {
+            transform: translateY(-40px);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
         }
 
         .comparison-header {
@@ -571,8 +580,10 @@
 
         .comparison-radar-container {
             display: flex;
+            flex-direction: row;
             justify-content: center;
-            align-items: center;
+            align-items: flex-start;
+            gap: 30px;
             margin-top: 20px;
             background-color: white;
             padding: 20px;
@@ -581,9 +592,54 @@
             position: relative;
         }
 
+        .radar-description-container {
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            border-left: 2px solid #ddd;
+            flex: 0 0 350px;
+            max-width: 350px;
+        }
+
+        .radar-description-container p {
+            margin: 8px 0;
+            font-size: 14px;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .radar-description-container .missing-data {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #ddd;
+        }
+
+        .radar-description-container .missing-data-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #d35400;
+            margin-bottom: 8px;
+        }
+
+        .radar-description-container .missing-data-item {
+            font-size: 13px;
+            color: #d35400;
+            margin: 5px 0;
+        }
+
+        .radar-description-container .complete-data {
+            font-size: 14px;
+            color: #27ae60;
+            font-style: italic;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #ddd;
+        }
+
         .radar-chart {
-            width: 700px;
-            height: 600px;
+            width: 100%;
+            max-width: 1100px;
+            height: auto;
         }
 
         .comparison-value {
@@ -618,33 +674,33 @@
                 <div id="bubble-legend">
                     <h4 id="legend-toggle">Map Legend</h4>
                     <div id="legend-content">
-        <div class="controls" id="metric-controls">
-            <strong>Colour by:</strong>
-            <label>
-                <input type="radio" name="metric-filter" value="aggregate" checked>
-                Aggregate Index
-            </label>
-            <label>
-                <input type="radio" name="metric-filter" value="happiness">
-                Happiness Rank
-            </label>
-            <label>
-                <input type="radio" name="metric-filter" value="mortality">
-                Child Mortality Rate
-            </label>
-            <label>
-                <input type="radio" name="metric-filter" value="education">
-                Primary School Completion Rate
-            </label>
-            <label>
-                <input type="radio" name="metric-filter" value="nutrition">
-                Children with Stunted Growth
-            </label>
-            <label>
-                <input type="radio" name="metric-filter" value="sanitation">
-                Households with Basic Sanitation
-            </label>
-        </div>
+                        <div class="controls" id="metric-controls">
+                            <strong>Colour by:</strong>
+                            <label>
+                                <input type="radio" name="metric-filter" value="aggregate" checked>
+                                Aggregate Index
+                            </label>
+                            <label>
+                                <input type="radio" name="metric-filter" value="happiness">
+                                Happiness Rank
+                            </label>
+                            <label>
+                                <input type="radio" name="metric-filter" value="mortality">
+                                Child Mortality Rate
+                            </label>
+                            <label>
+                                <input type="radio" name="metric-filter" value="education">
+                                Primary School Completion Rate
+                            </label>
+                            <label>
+                                <input type="radio" name="metric-filter" value="nutrition">
+                                Children with Stunted Growth
+                            </label>
+                            <label>
+                                <input type="radio" name="metric-filter" value="sanitation">
+                                Households with Basic Sanitation
+                            </label>
+                        </div>
                         <div id="legend-items"></div>
                         <div id="bubble-description" style="margin-top: 20px; padding: 12px; background-color: #f0f0f0; border-radius: 4px; font-size: 11px; line-height: 1.5; color: #333;">
                             <strong>Bubble Chart:</strong> When you select a country, branching bubbles appear showing key data dimensions. Each bubble's color hue encodes the z-score of that dimension using the magma color scale (darker = lower z-score, lighter = higher z-score).
@@ -652,7 +708,7 @@
                     </div>
                 </div>
                 <div id="map-svg-container">
-            <div class="loading">Loading world map...</div>
+                    <div class="loading">Loading world map...</div>
                 </div>
             </div>
         </div>
@@ -988,15 +1044,34 @@
         
         // Update comparison display
         function updateComparisonDisplay() {
+            // Hide info panel, show comparison panel
+            d3.select("#info-panel").style("display", "none");
+            const comparisonPanel = d3.select("#comparison-panel");
+            comparisonPanel.classed("active", true);
+            
             if (comparisonCountries.length === 0) {
-                d3.select("#comparison-panel").classed("active", false);
-                d3.select("#info-panel").style("display", "block");
+                // Clear the display but show empty state message
+                d3.select("#comparison-countries-list").html("");
+                const radarContainer = d3.select("#comparison-radar-container");
+                radarContainer.html("");
+                radarContainer.append("div")
+                    .style("text-align", "center")
+                    .style("padding", "100px 20px")
+                    .style("color", "#666")
+                    .style("font-size", "18px")
+                    .text("Select a country to start comparing!");
                 return;
             }
             
-            // Hide info panel, show comparison panel
-            d3.select("#info-panel").style("display", "none");
-            d3.select("#comparison-panel").classed("active", true);
+            // Brief "pop up" animation to draw attention
+            comparisonPanel.classed("pop", false);
+            if (comparisonPanel.node()) {
+                comparisonPanel.node().offsetWidth; // Force reflow
+            }
+            comparisonPanel.classed("pop", true);
+            setTimeout(() => {
+                comparisonPanel.classed("pop", false);
+            }, 500);
             
             // Update countries list
             const countriesList = d3.select("#comparison-countries-list");
@@ -1026,36 +1101,36 @@
             const container = d3.select("#comparison-radar-container");
             container.html("");
             
-            // Define statistics for radar chart
+            // Define statistics for radar chart (matching color-by legend, using z-scores)
             const stats = [
                 {
-                    name: "Life Expectancy",
-                    field: "life_expectancy_at_birth_2023_raw",
-                    unit: "years"
-                },
-                {
-                    name: "Population <18",
-                    field: "population_2023_thousands_under18",
-                    unit: "thousands"
-                },
-                {
-                    name: "Mortality Rate",
-                    field: "among5_14_mortality_rate_2022_raw",
-                    unit: "per 100k"
+                    name: "Child Mortality",
+                    field: "among5_14_mortality_rate_2022",
+                    zScoreField: "among5_14_mortality_rate_2022"
                 },
                 {
                     name: "Primary Completion",
-                    field: "completion_rate_2000_2023_primary_raw",
-                    unit: "%"
+                    field: "completion_rate_2000_2023_primary",
+                    zScoreField: "completion_rate_2000_2023_primary"
                 },
                 {
                     name: "Basic Sanitation",
-                    field: "basic_sanitation_household_perc_2022_raw",
-                    unit: "%"
+                    field: "basic_sanitation_household_perc_2022",
+                    zScoreField: "basic_sanitation_household_perc_2022"
+                },
+                {
+                    name: "Children with Stunted Growth",
+                    field: "stunted_perc_2022",
+                    zScoreField: "stunted_perc_2022"
+                },
+                {
+                    name: "Happiness Rank",
+                    field: "happiness_rank",
+                    zScoreField: "happiness_rank"
                 }
             ];
             
-            // Collect data for all selected countries
+            // Collect data for all selected countries (using z-scores)
             const countriesData = comparisonCountries.map(countryName => {
                 const data = findCountryData(countryName);
                 if (!data) return null;
@@ -1063,41 +1138,133 @@
                 return {
                     name: countryName,
                     data: data,
-                    values: stats.map(stat => parseFloat(data[stat.field]) || 0)
+                    values: stats.map(stat => {
+                        const zScoreValue = data[stat.zScoreField];
+                        return isMissing(zScoreValue) ? null : parseFloat(zScoreValue);
+                    }),
+                    missing: stats.map(stat => isMissing(data[stat.zScoreField]))
                 };
             }).filter(d => d !== null);
             
             if (countriesData.length === 0) return;
             
-            // Normalize values for radar chart (0-100 scale)
-            const allValues = countriesData.flatMap(d => d.values);
-            const maxValues = stats.map((stat, i) => {
-                const values = countriesData.map(d => d.values[i]).filter(v => v > 0);
-                return values.length > 0 ? Math.max(...values) * 1.1 : 1;
+            // Calculate global means for each stat (using z-scores)
+            const globalMeans = stats.map((stat, i) => {
+                const allCountryData = Object.values(countryData);
+                const validValues = allCountryData
+                    .map(d => parseFloat(d[stat.zScoreField]))
+                    .filter(v => !isNaN(v) && v !== null && v !== undefined && v !== "");
+                return validValues.length > 0 
+                    ? validValues.reduce((sum, val) => sum + val, 0) / validValues.length 
+                    : null;
             });
             
-            // Create normalized data
+            // Normalize values for radar chart (0-100 scale based on z-score range)
+            // Z-scores typically range from about -3 to +3, so we'll normalize to that range
+            const zScoreMin = -3;
+            const zScoreMax = 3;
+            const zScoreRange = zScoreMax - zScoreMin;
+            
+            // Track missing values for display
+            const missingDataInfo = [];
+            countriesData.forEach((country, idx) => {
+                const missingFields = [];
+                country.missing.forEach((isMissing, i) => {
+                    if (isMissing) {
+                        missingFields.push(stats[i].name);
+                    }
+                });
+                if (missingFields.length > 0) {
+                    missingDataInfo.push({
+                        country: country.name,
+                        fields: missingFields
+                    });
+                }
+            });
+            
+            // Create normalized data for countries (normalize z-scores to 0-100)
+            // Missing values are set to 0
             const normalizedData = countriesData.map((country, idx) => ({
                 name: country.name,
-                values: country.values.map((val, i) => (val / maxValues[i]) * 100)
+                values: country.values.map((val, i) => {
+                    if (val === null) return 0; // Missing values become 0
+                    // Normalize z-score to 0-100 scale
+                    const normalized = ((val - zScoreMin) / zScoreRange) * 100;
+                    return Math.max(0, Math.min(100, normalized)); // Clamp to 0-100
+                }),
+                missing: country.missing
             }));
             
+            // Create normalized data for global mean
+            const normalizedGlobalMean = {
+                name: "Global Mean",
+                values: globalMeans.map((mean, i) => {
+                    if (mean === null) return 0;
+                    const normalized = ((mean - zScoreMin) / zScoreRange) * 100;
+                    return Math.max(0, Math.min(100, normalized));
+                }),
+                missing: globalMeans.map(mean => mean === null)
+            };
+            
+            // Create a wrapper for the chart
+            const chartWrapper = container.append("div")
+                .style("flex", "0 0 auto");
+            
             // Create radar chart
-            createRadarChart(container.node(), normalizedData, stats);
+            createRadarChart(chartWrapper.node(), normalizedData, stats, normalizedGlobalMean, missingDataInfo);
+            
+            // Create separate description container beside the chart
+            const descriptionContainer = container.append("div")
+                .attr("class", "radar-description-container");
+            
+            // Add radar chart description
+            descriptionContainer.append("p")
+                .text("This radar chart compares selected countries across key dimensions using z-scores. ");
+            
+            descriptionContainer.append("p")
+                .text("Z-scores indicate how many standard deviations each country's value is from the global mean for that dimension. ");
+            
+            descriptionContainer.append("p")
+                .text("Values are normalized to a 0-100 scale, where 0 represents -3 standard deviations and 100 represents +3 standard deviations. ");
+            
+            descriptionContainer.append("p")
+                .text("The purple line shows the global mean for reference. ");
+            
+            // Add missing data information if any
+            if (missingDataInfo && missingDataInfo.length > 0) {
+                const missingDataDiv = descriptionContainer.append("div")
+                    .attr("class", "missing-data");
+                
+                missingDataDiv.append("div")
+                    .attr("class", "missing-data-title")
+                    .text("Missing Data:");
+                
+                missingDataInfo.forEach((info, idx) => {
+                    missingDataDiv.append("div")
+                        .attr("class", "missing-data-item")
+                        .text(`${info.country}: ${info.fields.join(", ")}`);
+                });
+            } else {
+                descriptionContainer.append("div")
+                    .attr("class", "complete-data")
+                    .text("All selected countries have complete data for all dimensions.");
+            }
         }
         
         // Create radar chart
-        function createRadarChart(container, data, stats) {
+        function createRadarChart(container, data, stats, globalMean = null, missingDataInfo = []) {
             const chartWidth = 600;
             const chartHeight = 600;
-            const legendWidth = 200;
-            const width = chartWidth + legendWidth;
-            const height = chartHeight;
-            const margin = { top: 60, right: 60, bottom: 60, left: 60 };
+            const width = chartWidth;
+            // Calculate legend height based on number of items
+            const legendItems = data.length + (globalMean ? 1 : 0);
+            const legendHeight = (legendItems * 25); // Top margin (10px) + items (25px each)
+            const height = chartHeight + legendHeight - 20; // Chart + legend + minimal gap (reduced from 20 to 5)
+            const margin = { top: 60, right: 180, bottom: 80, left: 120 };
             const radius = Math.min(chartWidth, chartHeight) / 2 - Math.max(margin.top, margin.right);
-            // Center the chart portion (not including legend) in the SVG
-            const centerX = chartWidth / 2;
-            const centerY = height / 2;
+            // Center the chart in the SVG, positioned close to legend above
+            const centerX = width / 2;
+            const centerY = legendHeight + 2 + (chartHeight / 2); // Minimal gap (2px) between legend and chart
             
             const svg = d3.select(container)
                 .append("svg")
@@ -1120,8 +1287,15 @@
                 return (index * angleStep) - (Math.PI / 2);
             };
             
+            // Find the maximum value across all data (countries + global mean) to scale to edge
+            const allValues = [
+                ...data.flatMap(d => d.values),
+                ...(globalMean ? globalMean.values : [])
+            ];
+            const maxValue = allValues.length > 0 ? Math.max(...allValues) : 100; // Use actual max, or 100 if no data
+            
             const radiusScale = d3.scaleLinear()
-                .domain([0, 100])
+                .domain([0, maxValue])
                 .range([0, radius]);
             
             // Color scale for countries
@@ -1129,10 +1303,14 @@
                 .domain(data.map(d => d.name))
                 .range(["#ffd700", "#4a90e2", "#ff6b6b", "#50c878", "#ffa500", "#9b59b6", "#e74c3c", "#3498db"]);
             
-            // Draw grid circles
+            // Color for global mean (different from missing data grey)
+            const globalMeanColor = "#6c5ce7";
+            
+            // Draw grid circles (5 levels, scaled to maxValue)
             for (let i = 1; i <= 5; i++) {
+                const gridValue = (i / 5) * maxValue; // Scale grid to maxValue
                 g.append("circle")
-                    .attr("r", radiusScale(i * 20))
+                    .attr("r", radiusScale(gridValue))
                     .attr("fill", "none")
                     .attr("stroke", "#ddd")
                     .attr("stroke-width", 1);
@@ -1153,28 +1331,162 @@
                     .attr("stroke", "#ddd")
                     .attr("stroke-width", 1);
                 
-                // Add axis labels with better positioning
-                const labelRadius = radius + 30;
+                // Add axis labels aligned with vertices
+                const labelRadius = radius + 35; // Distance from center for labels
                 const labelX = Math.sin(angle) * labelRadius;
                 const labelY = -Math.cos(angle) * labelRadius;
                 
-                // Determine text anchor based on angle
+                // Determine text anchor and alignment based on angle to align with axis
                 let textAnchor = "middle";
+                let labelOffsetX = 0;
+                let labelOffsetY = 0;
+                
+                // Adjust based on angle to align with axis direction
                 if (angle > -Math.PI / 6 && angle < Math.PI / 6) {
-                    textAnchor = "start"; // Right side
+                    // Right side (0 to 30 degrees)
+                    textAnchor = "start";
+                    labelOffsetX = 8;
+                } else if (angle > Math.PI / 6 && angle < 5 * Math.PI / 6) {
+                    // Bottom right to bottom left (30 to 150 degrees)
+                    textAnchor = "middle";
+                    labelOffsetY = 4;
                 } else if (angle > 5 * Math.PI / 6 || angle < -5 * Math.PI / 6) {
-                    textAnchor = "end"; // Left side
+                    // Left side (150 to -150 degrees)
+                    textAnchor = "end";
+                    labelOffsetX = -8;
+                } else {
+                    // Top left to top right (-150 to -30 degrees)
+                    textAnchor = "middle";
+                    labelOffsetY = -4;
+                }
+                
+                // Apply specific adjustments for certain labels
+                if (stat.name === "Primary Completion") {
+                    labelOffsetX -= 10; // Shift slightly to the left
+                } else if (stat.name === "Happiness Rank") {
+                    labelOffsetX += 10; // Shift slightly to the right
+                } else if (stat.name === "Child Mortality") {
+                    labelOffsetY += 3; // Shift very slightly downward
                 }
                 
                 g.append("text")
-                    .attr("x", labelX)
-                    .attr("y", labelY)
+                    .attr("x", labelX + labelOffsetX)
+                    .attr("y", labelY + labelOffsetY)
                     .attr("text-anchor", textAnchor)
+                    .attr("dominant-baseline", "middle")
                     .attr("font-size", "12px")
                     .attr("fill", "#333")
                     .attr("font-weight", "500")
                     .text(stat.name);
             });
+            
+            // Helper function to create path with missing data handling
+            function createPathWithMissing(pathPoints, closePath = true) {
+                let pathString = "";
+                let segments = [];
+                let currentSegment = [];
+                
+                // Group consecutive points into segments
+                pathPoints.forEach((point, i) => {
+                    if (point.isMissing) {
+                        // If we have a current non-missing segment, save it
+                        if (currentSegment.length > 0) {
+                            segments.push({ points: currentSegment, isMissing: false });
+                            currentSegment = [];
+                        }
+                        // Missing points go to center (radius 0) with dashed line
+                        segments.push({ 
+                            points: [{ ...point, radius: 0 }], 
+                            isMissing: true 
+                        });
+                    } else {
+                        currentSegment.push(point);
+                    }
+                });
+                
+                // Add final segment if exists
+                if (currentSegment.length > 0) {
+                    segments.push({ points: currentSegment, isMissing: false });
+                }
+                
+                // Build path string from segments
+                segments.forEach((segment, segIdx) => {
+                    if (segment.isMissing) {
+                        // For missing segments, draw line to center
+                        segment.points.forEach((point, i) => {
+                            const x = Math.sin(point.angle) * point.radius;
+                            const y = -Math.cos(point.angle) * point.radius;
+                            if (i === 0) {
+                                pathString += `M ${x} ${y}`;
+                            } else {
+                                pathString += ` L ${x} ${y}`;
+                            }
+                        });
+                    } else {
+                        // For non-missing segments, draw normal path
+                        segment.points.forEach((point, i) => {
+                            const x = Math.sin(point.angle) * point.radius;
+                            const y = -Math.cos(point.angle) * point.radius;
+                            if (i === 0) {
+                                pathString += `M ${x} ${y}`;
+                            } else {
+                                pathString += ` L ${x} ${y}`;
+                            }
+                        });
+                        if (closePath && segment.points.length > 2) {
+                            pathString += " Z";
+                        }
+                    }
+                });
+                
+                return pathString;
+            }
+            
+            // Draw global mean first (so it appears behind country data)
+            if (globalMean) {
+                const pathPoints = globalMean.values.map((value, i) => {
+                    const angle = getAngle(i);
+                    const r = radiusScale(value);
+                    return {
+                        angle: angle,
+                        radius: r,
+                        value: value
+                    };
+                });
+                
+                // Draw all segments as solid lines (missing values are 0)
+                pathPoints.forEach((point, i) => {
+                    const nextPoint = pathPoints[(i + 1) % pathPoints.length];
+                    const x1 = Math.sin(point.angle) * point.radius;
+                    const y1 = -Math.cos(point.angle) * point.radius;
+                    const x2 = Math.sin(nextPoint.angle) * nextPoint.radius;
+                    const y2 = -Math.cos(nextPoint.angle) * nextPoint.radius;
+                    
+                    // Draw solid line for all segments
+                    g.append("line")
+                        .attr("x1", x1)
+                        .attr("y1", y1)
+                        .attr("x2", x2)
+                        .attr("y2", y2)
+                        .attr("stroke", globalMeanColor)
+                        .attr("stroke-width", 2)
+                        .attr("opacity", 0.7);
+                });
+                
+                // Add points for global mean
+                pathPoints.forEach((point, i) => {
+                    const x = Math.sin(point.angle) * point.radius;
+                    const y = -Math.cos(point.angle) * point.radius;
+                    
+                    g.append("circle")
+                        .attr("cx", x)
+                        .attr("cy", y)
+                        .attr("r", 3)
+                        .attr("fill", globalMeanColor)
+                        .attr("stroke", "#fff")
+                        .attr("stroke-width", 1.5);
+                });
+            }
             
             // Draw data lines for each country
             data.forEach((country, countryIdx) => {
@@ -1189,26 +1501,35 @@
                     };
                 });
                 
-                // Create path string manually
-                let pathString = "";
+                // Draw all segments as solid lines (missing values are 0)
                 pathPoints.forEach((point, i) => {
-                    const x = Math.sin(point.angle) * point.radius;
-                    const y = -Math.cos(point.angle) * point.radius;
-                    if (i === 0) {
-                        pathString += `M ${x} ${y}`;
-                    } else {
-                        pathString += ` L ${x} ${y}`;
-                    }
+                    const nextPoint = pathPoints[(i + 1) % pathPoints.length];
+                    const x1 = Math.sin(point.angle) * point.radius;
+                    const y1 = -Math.cos(point.angle) * point.radius;
+                    const x2 = Math.sin(nextPoint.angle) * nextPoint.radius;
+                    const y2 = -Math.cos(nextPoint.angle) * nextPoint.radius;
+                    
+                    // Draw solid line for all segments
+                    g.append("line")
+                        .attr("x1", x1)
+                        .attr("y1", y1)
+                        .attr("x2", x2)
+                        .attr("y2", y2)
+                        .attr("stroke", colors(country.name))
+                        .attr("stroke-width", 2);
                 });
-                pathString += " Z"; // Close the path
                 
                 // Draw filled polygon
+                const pathString = pathPoints.map((point, i) => {
+                    const x = Math.sin(point.angle) * point.radius;
+                    const y = -Math.cos(point.angle) * point.radius;
+                    return i === 0 ? `M ${x} ${y}` : `L ${x} ${y}`;
+                }).join(" ") + " Z";
+                
                 g.append("path")
                     .attr("d", pathString)
                     .attr("fill", colors(country.name))
-                    .attr("fill-opacity", 0.2)
-                    .attr("stroke", colors(country.name))
-                    .attr("stroke-width", 2);
+                    .attr("fill-opacity", 0.2);
                 
                 // Add points
                 pathPoints.forEach((point, i) => {
@@ -1225,13 +1546,39 @@
                 });
             });
             
-            // Add legend - positioned to the right of the chart
+            // Add legend - positioned above the chart, stacked vertically
             const legend = svg.append("g")
-                .attr("transform", `translate(${chartWidth + 20}, ${height / 2 - (data.length * 25) / 2})`);
+                .attr("transform", `translate(${width / 2}, 10)`);
+            
+            // Create vertical legend layout
+            let legendY = 0;
+            
+            // Add global mean to legend first
+            if (globalMean) {
+                const legendItem = legend.append("g")
+                    .attr("transform", `translate(0, ${legendY})`);
+                
+                legendItem.append("line")
+                    .attr("x1", 0)
+                    .attr("x2", 15)
+                    .attr("y1", 7.5)
+                    .attr("y2", 7.5)
+                    .attr("stroke", globalMeanColor)
+                    .attr("stroke-width", 2);
+                
+                legendItem.append("text")
+                    .attr("x", 20)
+                    .attr("y", 12)
+                    .attr("font-size", "12px")
+                    .attr("fill", "#333")
+                    .text(globalMean.name);
+                
+                legendY += 25;
+            }
             
             data.forEach((country, i) => {
                 const legendItem = legend.append("g")
-                    .attr("transform", `translate(0, ${i * 25})`);
+                    .attr("transform", `translate(0, ${legendY})`);
                 
                 legendItem.append("rect")
                     .attr("width", 15)
@@ -1244,6 +1591,8 @@
                     .attr("font-size", "12px")
                     .attr("fill", "#333")
                     .text(country.name);
+                
+                legendY += 25;
             });
         }
         
@@ -2020,6 +2369,9 @@
                 
                 // Hide info panel
                 d3.select("#info-panel").style("display", "none");
+                
+                // Show comparison panel with empty state
+                updateComparisonDisplay();
                 
                 // Update legend
                 updateLegend();
