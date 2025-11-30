@@ -437,6 +437,169 @@
             font-weight: 500;
         }
 
+        /* View toggle styles */
+        .view-toggle {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            align-items: center;
+        }
+
+        .view-toggle button {
+            padding: 10px 20px;
+            font-size: 14px;
+            border: 2px solid #4a90e2;
+            border-radius: 6px;
+            background-color: white;
+            color: #4a90e2;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .view-toggle button.active {
+            background-color: #4a90e2;
+            color: white;
+        }
+
+        .view-toggle button:hover {
+            background-color: #f0f7ff;
+        }
+
+        .view-toggle button.active:hover {
+            background-color: #357abd;
+        }
+
+        /* Comparison mode styles */
+        .comparison-mode-indicator {
+            text-align: center;
+            padding: 10px;
+            background-color: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            color: #856404;
+        }
+
+        .country.selected-1 {
+            stroke: #ffd700;
+            stroke-width: 3px;
+        }
+
+        .country.selected-2 {
+            stroke: #4a90e2;
+            stroke-width: 3px;
+        }
+
+        /* Comparison panel styles */
+        #comparison-panel {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            border: 2px solid #4a90e2;
+        }
+
+        #comparison-panel.active {
+            display: block;
+        }
+
+        .comparison-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #4a90e2;
+        }
+
+        .comparison-header h3 {
+            margin: 0;
+            color: #333;
+        }
+
+        .clear-selection-btn {
+            padding: 8px 16px;
+            font-size: 14px;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .clear-selection-btn:hover {
+            background-color: #c82333;
+        }
+
+        .comparison-countries-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .comparison-country-header {
+            padding: 15px;
+            background-color: white;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .comparison-country-header.country-1 {
+            border-left: 4px solid #ffd700;
+        }
+
+        .comparison-country-header.country-2 {
+            border-left: 4px solid #4a90e2;
+        }
+
+        .comparison-country-header h4 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 18px;
+        }
+
+        .comparison-country-header p {
+            margin: 5px 0;
+            font-size: 13px;
+            color: #666;
+        }
+
+        .comparison-radar-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 20px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            position: relative;
+        }
+
+        .radar-chart {
+            width: 700px;
+            height: 600px;
+        }
+
+        .comparison-value {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .comparison-value.country-1 {
+            color: #ffd700;
+        }
+
+        .comparison-value.country-2 {
+            color: #4a90e2;
+        }
 
     </style>
 </head>
@@ -444,39 +607,44 @@
     <div class="container">
         <h1>Interactive World Map</h1>
         <p class="subtitle">Click on any country to view its data • Scroll to zoom, drag to pan</p>
+
+        <div class="view-toggle">
+            <button id="default-view-btn" class="active">Default View</button>
+            <button id="comparison-view-btn">Comparison View</button>
+        </div>
         
         <div id="map-container">
             <div id="map-wrapper">
                 <div id="bubble-legend">
                     <h4 id="legend-toggle">Map Legend</h4>
                     <div id="legend-content">
-                        <div class="controls" id="metric-controls">
-                            <strong>Colour by:</strong>
-                            <label>
-                                <input type="radio" name="metric-filter" value="aggregate" checked>
-                                Aggregate Index
-                            </label>
-                            <label>
-                                <input type="radio" name="metric-filter" value="happiness">
-                                Happiness Rank
-                            </label>
-                            <label>
-                                <input type="radio" name="metric-filter" value="mortality">
-                                Child Mortality Rate
-                            </label>
-                            <label>
-                                <input type="radio" name="metric-filter" value="education">
-                                Primary School Completion Rate
-                            </label>
-                            <label>
-                                <input type="radio" name="metric-filter" value="nutrition">
-                                Children with Stunted Growth
-                            </label>
-                            <label>
-                                <input type="radio" name="metric-filter" value="sanitation">
-                                Households with Basic Sanitation
-                            </label>
-                        </div>
+        <div class="controls" id="metric-controls">
+            <strong>Colour by:</strong>
+            <label>
+                <input type="radio" name="metric-filter" value="aggregate" checked>
+                Aggregate Index
+            </label>
+            <label>
+                <input type="radio" name="metric-filter" value="happiness">
+                Happiness Rank
+            </label>
+            <label>
+                <input type="radio" name="metric-filter" value="mortality">
+                Child Mortality Rate
+            </label>
+            <label>
+                <input type="radio" name="metric-filter" value="education">
+                Primary School Completion Rate
+            </label>
+            <label>
+                <input type="radio" name="metric-filter" value="nutrition">
+                Children with Stunted Growth
+            </label>
+            <label>
+                <input type="radio" name="metric-filter" value="sanitation">
+                Households with Basic Sanitation
+            </label>
+        </div>
                         <div id="legend-items"></div>
                         <div id="bubble-description" style="margin-top: 20px; padding: 12px; background-color: #f0f0f0; border-radius: 4px; font-size: 11px; line-height: 1.5; color: #333;">
                             <strong>Bubble Chart:</strong> When you select a country, branching bubbles appear showing key data dimensions. Each bubble's color hue encodes the z-score of that dimension using the magma color scale (darker = lower z-score, lighter = higher z-score).
@@ -484,7 +652,7 @@
                     </div>
                 </div>
                 <div id="map-svg-container">
-                    <div class="loading">Loading world map...</div>
+            <div class="loading">Loading world map...</div>
                 </div>
             </div>
         </div>
@@ -492,6 +660,15 @@
         <div id="info-panel">
             <h3 id="country-name">Select a country to view details!</h3>
             <div id="tree-container"></div>
+        </div>
+
+        <div id="comparison-panel">
+            <div class="comparison-header">
+                <h3>Country Comparison</h3>
+                <button class="clear-selection-btn" id="clear-selection-btn">Clear Selection</button>
+            </div>
+            <div class="comparison-countries-list" id="comparison-countries-list"></div>
+            <div class="comparison-radar-container" id="comparison-radar-container"></div>
         </div>
 
     </div>
@@ -542,6 +719,10 @@
         let selectedCountry = null;
         let wellbeingColorScale = null; // color scale for child_wellbeing_index
         let activeMetricKey = "aggregate"; // which metric is driving the color scale
+        
+        // Comparison mode state
+        let comparisonMode = false;
+        let comparisonCountries = []; // Array to hold multiple countries
 
         // Mapping from UI filter to CSV z-score field
         const metricConfig = {
@@ -723,8 +904,22 @@
                 return;
             }
 
+            if (comparisonMode) {
+                // Comparison mode: select up to two countries
+                handleComparisonClick(countryName, geoData);
+            } else {
+                // Default mode: single country selection
+                handleDefaultClick(countryName, geoData);
+            }
+        }
+        
+        // Handle click in default mode
+        function handleDefaultClick(countryName, geoData) {
             // Remove previous selection
-            mapGroup.selectAll(".country").classed("selected", false);
+            mapGroup.selectAll(".country")
+                .classed("selected", false)
+                .classed("selected-1", false)
+                .classed("selected-2", false);
             
             // Add selection to clicked country
             mapGroup.selectAll(".country")
@@ -733,15 +928,14 @@
             
             selectedCountry = countryName;
             
-            // Show info panel
+            // Show info panel, hide comparison panel
             const infoPanel = d3.select("#info-panel");
             infoPanel.style("display", "block");
+            d3.select("#comparison-panel").classed("active", false);
 
             // Brief "pop up" animation to draw attention
             infoPanel.classed("pop", false);
-            // Force reflow so the class re-add will retrigger the transition
             if (infoPanel.node()) {
-                // eslint-disable-next-line no-unused-expressions
                 infoPanel.node().offsetWidth;
             }
             infoPanel.classed("pop", true);
@@ -752,9 +946,305 @@
             // Update country name
             d3.select("#country-name").text(countryName);
 
-            // Display country data (we already know `data` exists)
+            // Display country data
+            const data = findCountryData(countryName);
             displayCountryData(data, geoData);
+        }
+        
+        // Handle click in comparison mode
+        function handleComparisonClick(countryName, geoData) {
+            const index = comparisonCountries.indexOf(countryName);
             
+            if (index > -1) {
+                // Country already selected, deselect it
+                comparisonCountries.splice(index, 1);
+                mapGroup.selectAll(".country")
+                    .filter(d => (d.properties.NAME || d.properties.name || "Unknown") === countryName)
+                    .classed("selected-1", false)
+                    .classed("selected-2", false);
+            } else {
+                // Add country to comparison
+                comparisonCountries.push(countryName);
+                // Apply visual class based on position (alternate between selected-1 and selected-2)
+                const classToApply = comparisonCountries.length % 2 === 1 ? "selected-1" : "selected-2";
+                mapGroup.selectAll(".country")
+                    .filter(d => (d.properties.NAME || d.properties.name || "Unknown") === countryName)
+                    .classed(classToApply, true);
+            }
+            
+            updateComparisonDisplay();
+        }
+        
+        // Clear all selections
+        function clearComparisonSelections() {
+            comparisonCountries = [];
+            mapGroup.selectAll(".country")
+                .classed("selected-1", false)
+                .classed("selected-2", false);
+            // Remove bubble chart overlay
+            mapGroup.selectAll(".bubble-overlay").remove();
+            updateComparisonDisplay();
+        }
+        
+        // Update comparison display
+        function updateComparisonDisplay() {
+            if (comparisonCountries.length === 0) {
+                d3.select("#comparison-panel").classed("active", false);
+                d3.select("#info-panel").style("display", "block");
+                return;
+            }
+            
+            // Hide info panel, show comparison panel
+            d3.select("#info-panel").style("display", "none");
+            d3.select("#comparison-panel").classed("active", true);
+            
+            // Update countries list
+            const countriesList = d3.select("#comparison-countries-list");
+            countriesList.html("");
+            
+            comparisonCountries.forEach((countryName, index) => {
+                const countryDiv = countriesList.append("div")
+                    .attr("class", "comparison-country-header")
+                    .classed("country-1", index % 2 === 0)
+                    .classed("country-2", index % 2 === 1);
+                
+                const data = findCountryData(countryName);
+                if (data) {
+                    countryDiv.append("h4").text(countryName);
+                    countryDiv.append("p").html(`<strong>Index:</strong> ${fmt(data["child_wellbeing_index"], 2)}`);
+                }
+            });
+            
+            // Show radar chart if at least one country selected
+            if (comparisonCountries.length > 0) {
+                displayRadarComparison();
+            }
+        }
+        
+        // Display radar chart comparison
+        function displayRadarComparison() {
+            const container = d3.select("#comparison-radar-container");
+            container.html("");
+            
+            // Define statistics for radar chart
+            const stats = [
+                {
+                    name: "Life Expectancy",
+                    field: "life_expectancy_at_birth_2023_raw",
+                    unit: "years"
+                },
+                {
+                    name: "Population <18",
+                    field: "population_2023_thousands_under18",
+                    unit: "thousands"
+                },
+                {
+                    name: "Mortality Rate",
+                    field: "among5_14_mortality_rate_2022_raw",
+                    unit: "per 100k"
+                },
+                {
+                    name: "Primary Completion",
+                    field: "completion_rate_2000_2023_primary_raw",
+                    unit: "%"
+                },
+                {
+                    name: "Basic Sanitation",
+                    field: "basic_sanitation_household_perc_2022_raw",
+                    unit: "%"
+                }
+            ];
+            
+            // Collect data for all selected countries
+            const countriesData = comparisonCountries.map(countryName => {
+                const data = findCountryData(countryName);
+                if (!data) return null;
+                
+                return {
+                    name: countryName,
+                    data: data,
+                    values: stats.map(stat => parseFloat(data[stat.field]) || 0)
+                };
+            }).filter(d => d !== null);
+            
+            if (countriesData.length === 0) return;
+            
+            // Normalize values for radar chart (0-100 scale)
+            const allValues = countriesData.flatMap(d => d.values);
+            const maxValues = stats.map((stat, i) => {
+                const values = countriesData.map(d => d.values[i]).filter(v => v > 0);
+                return values.length > 0 ? Math.max(...values) * 1.1 : 1;
+            });
+            
+            // Create normalized data
+            const normalizedData = countriesData.map((country, idx) => ({
+                name: country.name,
+                values: country.values.map((val, i) => (val / maxValues[i]) * 100)
+            }));
+            
+            // Create radar chart
+            createRadarChart(container.node(), normalizedData, stats);
+        }
+        
+        // Create radar chart
+        function createRadarChart(container, data, stats) {
+            const chartWidth = 600;
+            const chartHeight = 600;
+            const legendWidth = 200;
+            const width = chartWidth + legendWidth;
+            const height = chartHeight;
+            const margin = { top: 60, right: 60, bottom: 60, left: 60 };
+            const radius = Math.min(chartWidth, chartHeight) / 2 - Math.max(margin.top, margin.right);
+            // Center the chart portion (not including legend) in the SVG
+            const centerX = chartWidth / 2;
+            const centerY = height / 2;
+            
+            const svg = d3.select(container)
+                .append("svg")
+                .attr("class", "radar-chart")
+                .attr("width", width)
+                .attr("height", height);
+            
+            const g = svg.append("g")
+                .attr("transform", `translate(${centerX}, ${centerY})`);
+            
+            // Calculate angles manually to ensure even distribution
+            // For 5 categories, each should be 2π/5 radians apart
+            // Start from top (-π/2) and go clockwise
+            const numStats = stats.length;
+            const angleStep = (2 * Math.PI) / numStats;
+            
+            // Function to get angle for a given index
+            const getAngle = (index) => {
+                // Start from top (-π/2) and go clockwise
+                return (index * angleStep) - (Math.PI / 2);
+            };
+            
+            const radiusScale = d3.scaleLinear()
+                .domain([0, 100])
+                .range([0, radius]);
+            
+            // Color scale for countries
+            const colors = d3.scaleOrdinal()
+                .domain(data.map(d => d.name))
+                .range(["#ffd700", "#4a90e2", "#ff6b6b", "#50c878", "#ffa500", "#9b59b6", "#e74c3c", "#3498db"]);
+            
+            // Draw grid circles
+            for (let i = 1; i <= 5; i++) {
+                g.append("circle")
+                    .attr("r", radiusScale(i * 20))
+                    .attr("fill", "none")
+                    .attr("stroke", "#ddd")
+                    .attr("stroke-width", 1);
+            }
+            
+            // Draw grid lines (axes) and labels
+            stats.forEach((stat, i) => {
+                const angle = getAngle(i);
+                const x = Math.sin(angle) * radius;
+                const y = -Math.cos(angle) * radius;
+                
+                // Draw axis line
+                g.append("line")
+                    .attr("x1", 0)
+                    .attr("y1", 0)
+                    .attr("x2", x)
+                    .attr("y2", y)
+                    .attr("stroke", "#ddd")
+                    .attr("stroke-width", 1);
+                
+                // Add axis labels with better positioning
+                const labelRadius = radius + 30;
+                const labelX = Math.sin(angle) * labelRadius;
+                const labelY = -Math.cos(angle) * labelRadius;
+                
+                // Determine text anchor based on angle
+                let textAnchor = "middle";
+                if (angle > -Math.PI / 6 && angle < Math.PI / 6) {
+                    textAnchor = "start"; // Right side
+                } else if (angle > 5 * Math.PI / 6 || angle < -5 * Math.PI / 6) {
+                    textAnchor = "end"; // Left side
+                }
+                
+                g.append("text")
+                    .attr("x", labelX)
+                    .attr("y", labelY)
+                    .attr("text-anchor", textAnchor)
+                    .attr("font-size", "12px")
+                    .attr("fill", "#333")
+                    .attr("font-weight", "500")
+                    .text(stat.name);
+            });
+            
+            // Draw data lines for each country
+            data.forEach((country, countryIdx) => {
+                // Build path data with proper angles
+                const pathPoints = country.values.map((value, i) => {
+                    const angle = getAngle(i);
+                    const r = radiusScale(value);
+                    return {
+                        angle: angle,
+                        radius: r,
+                        value: value
+                    };
+                });
+                
+                // Create path string manually
+                let pathString = "";
+                pathPoints.forEach((point, i) => {
+                    const x = Math.sin(point.angle) * point.radius;
+                    const y = -Math.cos(point.angle) * point.radius;
+                    if (i === 0) {
+                        pathString += `M ${x} ${y}`;
+                    } else {
+                        pathString += ` L ${x} ${y}`;
+                    }
+                });
+                pathString += " Z"; // Close the path
+                
+                // Draw filled polygon
+                g.append("path")
+                    .attr("d", pathString)
+                    .attr("fill", colors(country.name))
+                    .attr("fill-opacity", 0.2)
+                    .attr("stroke", colors(country.name))
+                    .attr("stroke-width", 2);
+                
+                // Add points
+                pathPoints.forEach((point, i) => {
+                    const x = Math.sin(point.angle) * point.radius;
+                    const y = -Math.cos(point.angle) * point.radius;
+                    
+                    g.append("circle")
+                        .attr("cx", x)
+                        .attr("cy", y)
+                        .attr("r", 4)
+                        .attr("fill", colors(country.name))
+                        .attr("stroke", "#fff")
+                        .attr("stroke-width", 2);
+                });
+            });
+            
+            // Add legend - positioned to the right of the chart
+            const legend = svg.append("g")
+                .attr("transform", `translate(${chartWidth + 20}, ${height / 2 - (data.length * 25) / 2})`);
+            
+            data.forEach((country, i) => {
+                const legendItem = legend.append("g")
+                    .attr("transform", `translate(0, ${i * 25})`);
+                
+                legendItem.append("rect")
+                    .attr("width", 15)
+                    .attr("height", 15)
+                    .attr("fill", colors(country.name));
+                
+                legendItem.append("text")
+                    .attr("x", 20)
+                    .attr("y", 12)
+                    .attr("font-size", "12px")
+                    .attr("fill", "#333")
+                    .text(country.name);
+            });
         }
         
         // Helper to check if value is missing
@@ -762,11 +1252,11 @@
             return v === null || v === undefined || v === "" || isNaN(+v);
         }
 
-        // Helper to safely format numeric values
+            // Helper to safely format numeric values
         function fmt(v, digits = 1) {
             if (isMissing(v)) return "Data not available";
-            const num = +v;
-            return Number.isInteger(num) ? num.toString() : num.toFixed(digits);
+                const num = +v;
+                return Number.isInteger(num) ? num.toString() : num.toFixed(digits);
         }
 
         // Function to display country data as tree
@@ -777,7 +1267,7 @@
             
             // Create tree for aggregate index
             createIndexTree(data);
-            
+
             // Create tree for other statistics
             createOtherStatsTree(data);
             
@@ -903,7 +1393,7 @@
                     field: "happiness_rank_raw"
                 }
             ];
-            
+
             // Build tree data structure
             const root = {
                 name: "Aggregate Index",
@@ -952,7 +1442,7 @@
                 .attr("dx", d => d.depth === 0 ? 0 : 12)
                 .attr("text-anchor", d => d.depth === 0 ? "middle" : "start")
                 .text(d => d.data.name);
-            
+
             // Add z-score for root node
             const zScoreLabels = nodes.filter(d => d.depth === 0)
                 .append("text")
@@ -1058,7 +1548,7 @@
                 .attr("d", d3.linkHorizontal()
                     .x(d => d.y + 100)
                     .y(d => d.x));
-            
+
             // Draw nodes
             const nodes = g.selectAll(".tree-node")
                 .data(rootNode.descendants())
@@ -1486,6 +1976,61 @@
         if (legendToggle && legend) {
             legendToggle.addEventListener("click", function() {
                 legend.classList.toggle("collapsed");
+            });
+        }
+        
+        // View toggle functionality
+        const defaultViewBtn = document.getElementById("default-view-btn");
+        const comparisonViewBtn = document.getElementById("comparison-view-btn");
+        
+        if (defaultViewBtn && comparisonViewBtn) {
+            defaultViewBtn.addEventListener("click", function() {
+                comparisonMode = false;
+                defaultViewBtn.classList.add("active");
+                comparisonViewBtn.classList.remove("active");
+                
+                // Clear comparison selections
+                comparisonCountries = [];
+                mapGroup.selectAll(".country")
+                    .classed("selected-1", false)
+                    .classed("selected-2", false);
+                
+                // Remove bubble chart overlay
+                mapGroup.selectAll(".bubble-overlay").remove();
+                
+                // Hide comparison panel, show info panel
+                d3.select("#comparison-panel").classed("active", false);
+                d3.select("#info-panel").style("display", "block");
+                
+                // Update legend
+                updateLegend();
+            });
+            
+            comparisonViewBtn.addEventListener("click", function() {
+                comparisonMode = true;
+                comparisonViewBtn.classList.add("active");
+                defaultViewBtn.classList.remove("active");
+                
+                // Clear single selection
+                selectedCountry = null;
+                mapGroup.selectAll(".country").classed("selected", false);
+                
+                // Remove bubble chart overlay
+                mapGroup.selectAll(".bubble-overlay").remove();
+                
+                // Hide info panel
+                d3.select("#info-panel").style("display", "none");
+                
+                // Update legend
+                updateLegend();
+            });
+        }
+        
+        // Clear selection button
+        const clearSelectionBtn = document.getElementById("clear-selection-btn");
+        if (clearSelectionBtn) {
+            clearSelectionBtn.addEventListener("click", function() {
+                clearComparisonSelections();
             });
         }
         
