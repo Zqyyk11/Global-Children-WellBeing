@@ -123,6 +123,47 @@
             border-radius: 4px;
         }
         
+        /* Dimming overlay sections that cover everything except the highlighted area */
+        .tutorial-dim-top,
+        .tutorial-dim-bottom,
+        .tutorial-dim-left,
+        .tutorial-dim-right {
+            position: fixed;
+            background-color: rgba(0, 0, 0, 0.7);
+            pointer-events: none;
+            z-index: 2000;
+            display: none;
+        }
+        
+        .tutorial-dim-top {
+            top: 0;
+            left: 0;
+            right: 0;
+        }
+        
+        .tutorial-dim-bottom {
+            bottom: 0;
+            left: 0;
+            right: 0;
+        }
+        
+        .tutorial-dim-left {
+            top: 0;
+            bottom: 0;
+            left: 0;
+        }
+        
+        .tutorial-dim-right {
+            top: 0;
+            bottom: 0;
+            right: 0;
+        }
+        
+        /* Remove the background dimming from the main overlay when highlighting */
+        #tutorial-overlay.has-highlight {
+            background-color: rgba(0, 0, 0, 0);
+        }
+        
         /* Tutorial content box */
         .tutorial-content {
             position: fixed;
@@ -870,6 +911,10 @@
     </div>
     
     <div id="tutorial-overlay">
+        <div class="tutorial-dim-top" id="tutorial-dim-top"></div>
+        <div class="tutorial-dim-bottom" id="tutorial-dim-bottom"></div>
+        <div class="tutorial-dim-left" id="tutorial-dim-left"></div>
+        <div class="tutorial-dim-right" id="tutorial-dim-right"></div>
         <div class="tutorial-highlight" id="tutorial-highlight"></div>
         <div class="tutorial-content" id="tutorial-content">
             <button class="tutorial-close" id="tutorial-close">×</button>
@@ -885,7 +930,7 @@
     
     <div class="container">
         <h1>Mapping Global Child Well-Being:<br>An Interactive Visualization for Social Good </h1>
-        <p class="subtitle">Click on any country to view its data • Scroll to zoom, drag to pan</p>
+        <p class="subtitle" id="subtitle">Click on any country to view its data • Scroll to zoom, drag to pan</p>
 
         <div class="view-toggle">
             <button id="default-view-btn" class="active">Default View</button>
@@ -2705,6 +2750,9 @@
                 defaultViewBtn.classList.add("active");
                 comparisonViewBtn.classList.remove("active");
                 
+                // Update subtitle
+                document.getElementById("subtitle").textContent = "Click on any country to view its data • Scroll to zoom, drag to pan";
+                
                 // Clear comparison selections
                 comparisonCountries = [];
                 mapGroup.selectAll(".country")
@@ -2727,12 +2775,21 @@
                 comparisonViewBtn.classList.add("active");
                 defaultViewBtn.classList.remove("active");
                 
+                // Update subtitle
+                document.getElementById("subtitle").textContent = "Click on countries to compare them • Scroll to zoom, drag to pan";
+                
                 // Clear single selection
                 selectedCountry = null;
                 mapGroup.selectAll(".country").classed("selected", false);
                 
-                // Remove bubble chart overlay
+                // Remove bubble chart overlay - use multiple selectors to ensure all bubbles are removed
                 mapGroup.selectAll(".bubble-overlay").remove();
+                mapGroup.selectAll(".bubble").remove();
+                
+                // Clear info panel content
+                d3.select("#tree-container").html("");
+                d3.select("#data-description").remove();
+                d3.select("#country-name").text("Select a country to view details!");
                 
                 // Hide info panel
                 d3.select("#info-panel").style("display", "none");
@@ -2744,7 +2801,10 @@
                 updateLegend();
                 
                 // Advance tutorial if waiting for comparison view click
-                advanceTutorialOnAction("comparisonViewClick");
+                // Use setTimeout to ensure the action is processed after DOM updates
+                setTimeout(() => {
+                    advanceTutorialOnAction("comparisonViewClick");
+                }, 100);
             });
         }
         
@@ -2857,8 +2917,29 @@
         
         function highlightElement(selector) {
             const highlight = document.getElementById("tutorial-highlight");
+            const overlay = document.getElementById("tutorial-overlay");
+            const dimTop = document.getElementById("tutorial-dim-top");
+            const dimBottom = document.getElementById("tutorial-dim-bottom");
+            const dimLeft = document.getElementById("tutorial-dim-left");
+            const dimRight = document.getElementById("tutorial-dim-right");
+            
+            // Remove highlight class from all previously highlighted elements
+            document.querySelectorAll(".tutorial-highlighted-element").forEach(el => {
+                el.classList.remove("tutorial-highlighted-element");
+            });
+            
             if (!selector) {
                 highlight.style.display = "none";
+                dimTop.style.display = "none";
+                dimBottom.style.display = "none";
+                dimLeft.style.display = "none";
+                dimRight.style.display = "none";
+                overlay.classList.remove("has-highlight");
+                // Center content if no highlight
+                const content = document.getElementById("tutorial-content");
+                content.style.top = "50%";
+                content.style.left = "50%";
+                content.style.transform = "translate(-50%, -50%)";
                 return;
             }
             
@@ -2867,6 +2948,11 @@
                 const elements = document.querySelectorAll(selector);
                 if (elements.length === 0) {
                     highlight.style.display = "none";
+                    dimTop.style.display = "none";
+                    dimBottom.style.display = "none";
+                    dimLeft.style.display = "none";
+                    dimRight.style.display = "none";
+                    overlay.classList.remove("has-highlight");
                     // Center content if no highlight
                     const content = document.getElementById("tutorial-content");
                     content.style.top = "50%";
@@ -2874,6 +2960,11 @@
                     content.style.transform = "translate(-50%, -50%)";
                     return;
                 }
+                
+                // Add highlight class to elements so they're not dimmed
+                elements.forEach(el => {
+                    el.classList.add("tutorial-highlighted-element");
+                });
                 
                 // Get bounding box of all matching elements
                 let minTop = Infinity, minLeft = Infinity, maxBottom = -Infinity, maxRight = -Infinity;
@@ -2885,11 +2976,49 @@
                     maxRight = Math.max(maxRight, rect.right);
                 });
                 
+                // Add padding to the highlight box
+                const padding = 4;
+                const highlightTop = minTop - padding;
+                const highlightLeft = minLeft - padding;
+                const highlightWidth = (maxRight - minLeft) + (padding * 2);
+                const highlightHeight = (maxBottom - minTop) + (padding * 2);
+                
                 highlight.style.display = "block";
-                highlight.style.top = minTop + "px";
-                highlight.style.left = minLeft + "px";
-                highlight.style.width = (maxRight - minLeft) + "px";
-                highlight.style.height = (maxBottom - minTop) + "px";
+                highlight.style.top = highlightTop + "px";
+                highlight.style.left = highlightLeft + "px";
+                highlight.style.width = highlightWidth + "px";
+                highlight.style.height = highlightHeight + "px";
+                
+                // Set up dimming overlays to cover everything except the highlighted area
+                overlay.classList.add("has-highlight");
+                
+                // Top dimming overlay
+                dimTop.style.display = "block";
+                dimTop.style.top = "0px";
+                dimTop.style.left = "0px";
+                dimTop.style.width = "100%";
+                dimTop.style.height = highlightTop + "px";
+                
+                // Bottom dimming overlay
+                dimBottom.style.display = "block";
+                dimBottom.style.top = (highlightTop + highlightHeight) + "px";
+                dimBottom.style.left = "0px";
+                dimBottom.style.width = "100%";
+                dimBottom.style.height = (window.innerHeight - (highlightTop + highlightHeight)) + "px";
+                
+                // Left dimming overlay
+                dimLeft.style.display = "block";
+                dimLeft.style.top = highlightTop + "px";
+                dimLeft.style.left = "0px";
+                dimLeft.style.width = highlightLeft + "px";
+                dimLeft.style.height = highlightHeight + "px";
+                
+                // Right dimming overlay
+                dimRight.style.display = "block";
+                dimRight.style.top = highlightTop + "px";
+                dimRight.style.left = (highlightLeft + highlightWidth) + "px";
+                dimRight.style.width = (window.innerWidth - (highlightLeft + highlightWidth)) + "px";
+                dimRight.style.height = highlightHeight + "px";
                 
                 positionTutorialContent();
             }, 100);
@@ -3050,6 +3179,14 @@
                 setTimeout(() => {
                     nextTutorialStep();
                 }, 500);
+            } else if (step && step.waitFor) {
+                // Debug: log if action doesn't match (for troubleshooting)
+                console.log("Tutorial action mismatch:", {
+                    currentStep: currentTutorialStep,
+                    expectedAction: step.waitFor,
+                    receivedAction: action,
+                    stepTitle: step.title
+                });
             }
         }
         
@@ -3059,8 +3196,18 @@
         }
         
         function closeTutorial() {
-            document.getElementById("tutorial-overlay").classList.remove("active");
+            const overlay = document.getElementById("tutorial-overlay");
+            overlay.classList.remove("active");
+            overlay.classList.remove("has-highlight");
             document.getElementById("tutorial-highlight").style.display = "none";
+            document.getElementById("tutorial-dim-top").style.display = "none";
+            document.getElementById("tutorial-dim-bottom").style.display = "none";
+            document.getElementById("tutorial-dim-left").style.display = "none";
+            document.getElementById("tutorial-dim-right").style.display = "none";
+            // Remove highlight class from all elements
+            document.querySelectorAll(".tutorial-highlighted-element").forEach(el => {
+                el.classList.remove("tutorial-highlighted-element");
+            });
         }
         
         function nextTutorialStep() {
