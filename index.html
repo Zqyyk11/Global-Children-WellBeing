@@ -299,7 +299,7 @@
 
         /* Temporary "pop" effect to draw attention when a country is selected */
         #info-panel.pop {
-            transform: translateY(-40px);
+            transform: translateY(-300px);
             box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
         }
         
@@ -511,7 +511,7 @@
 
         /* Temporary "pop" effect to draw attention when a country is selected */
         #comparison-panel.pop {
-            transform: translateY(-40px);
+            transform: translateY(-300px);
             box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
         }
 
@@ -939,8 +939,10 @@
                 
                 console.log("World map loaded successfully!");
 
-                // Apply colors (may be a no-op until data is loaded)
-                updateCountryColors();
+                // Update bubbles when data is loaded
+                if (Object.keys(countryData).length > 0) {
+                    updateCountryColors();
+                }
             })
             .catch(function(error) {
                 console.error("Error loading map:", error);
@@ -1640,8 +1642,8 @@
                     value: data["life_expectancy_at_birth_2023_raw"]
                 },
                 {
-                    label: "Population under 18 (thousands, 2023):",
-                    value: data["population_2023_thousands_under18"]
+                    label: "Population under 18 (millions, 2023):",
+                    value: data["population_2023_thousands_under18"] ? (parseFloat(data["population_2023_thousands_under18"]) / 1000) : null
                 },
                 {
                     label: "Mortality rate (ages 5–14, 2022, per 100,000 children):",
@@ -1678,8 +1680,9 @@
             ];
             
             dimensions.forEach(dim => {
+                const digits = dim.label.includes("GDP") || dim.label.includes("rank") ? 0 : (dim.label.includes("millions") ? 2 : 1);
                 descriptionDiv.append("p")
-                    .html(`<strong>${dim.label}</strong> ${fmt(dim.value, dim.label.includes("GDP") || dim.label.includes("rank") ? 0 : 1)}`);
+                    .html(`<strong>${dim.label}</strong> ${fmt(dim.value, digits)}`);
             });
         }
 
@@ -1728,12 +1731,6 @@
                     rawValue: data["stunted_perc_2022_raw"],
                     unit: "%",
                     field: "stunted_perc_2022_raw"
-                },
-                {
-                    name: "Internet Access",
-                    rawValue: data["internet_latest_raw"],
-                    unit: "%",
-                    field: "internet_latest_raw"
                 },
                 {
                     name: "Happiness Rank",
@@ -1863,9 +1860,15 @@
                 },
                 {
                     name: "Population <18",
-                    rawValue: data["population_2023_thousands_under18"],
-                    unit: "thousands",
+                    rawValue: data["population_2023_thousands_under18"] ? (parseFloat(data["population_2023_thousands_under18"]) / 1000) : null,
+                    unit: "millions",
                     field: "population_2023_thousands_under18"
+                },
+                {
+                    name: "Internet Access",
+                    rawValue: data["internet_latest_raw"],
+                    unit: "%",
+                    field: "internet_latest_raw"
                 }
             ];
             
@@ -1927,7 +1930,7 @@
                     if (d.data.isMissing) {
                         return "Data not available";
                     }
-                    const val = fmt(d.data.value, d.data.unit === "%" ? 1 : (d.data.unit === "thousands" ? 0 : 1));
+                    const val = fmt(d.data.value, d.data.unit === "%" ? 1 : (d.data.unit === "millions" ? 2 : 1));
                     return `${val} ${d.data.unit}`;
                 });
         }
@@ -1947,11 +1950,11 @@
                     zScoreField: "life_expectancy_at_birth_2023"
                 },
                 {
-                    name: "Population <18",
-                    value: parseFloat(data["population_2023_thousands_under18"]) || 0,
-                    unit: "thousands",
-                    rawField: "population_2023_thousands_under18",
-                    zScoreField: null // Population doesn't have a z-score field
+                    name: "Happiness Rank",
+                    value: parseFloat(data["happiness_rank_raw"]) || 0,
+                    unit: "",
+                    rawField: "happiness_rank_raw",
+                    zScoreField: "happiness_rank"
                 },
                 {
                     name: "Mortality Rate",
@@ -1983,7 +1986,7 @@
                 return;
             }
             
-            // Calculate position - try to position near the clicked country's centroid
+            // Calculate position - use the population bubble's position
             let bubbleX, bubbleY;
             const bubbleChartRadius = 100; // Approximate radius of the bubble chart (for boundary checking)
             
@@ -2044,12 +2047,28 @@
                     }
                 }
                 
-                // Draw bubble (all same size)
-                overlay.append("circle")
+                // Calculate final positions
+                let labelRadius = radius + bubbleRadius + 15; // Position label outside the bubble
+                let labelX = centerX + labelRadius * Math.cos(angle);
+                let labelY = centerY + labelRadius * Math.sin(angle);
+                
+                // Apply special offsets for specific labels
+                if (stat.name === "Basic Sanitation") {
+                    // Offset up-left: move up and left
+                    labelX -= 15;
+                    labelY -= 10;
+                } else if (stat.name === "Happiness Rank") {
+                    // Offset up-right: move up and right
+                    labelX += 15;
+                    labelY -= 10;
+                }
+                
+                // Draw bubble starting at center, then animate to final position
+                const bubble = overlay.append("circle")
                     .attr("class", "bubble")
-                    .attr("cx", x)
-                    .attr("cy", y)
-                    .attr("r", bubbleRadius)
+                    .attr("cx", centerX)
+                    .attr("cy", centerY)
+                    .attr("r", 0)
                     .attr("fill", bubbleColor)
                     .attr("data-stat", stat.name)
                     .on("mouseover", function(event) {
@@ -2061,58 +2080,79 @@
                         hideBubbleTooltip();
                     });
                 
-                // Add value label inside bubble (center)
+                // Animate bubble emerging from center
+                bubble.transition()
+                    .duration(600)
+                    .ease(d3.easeCubicOut)
+                    .attr("cx", x)
+                    .attr("cy", y)
+                    .attr("r", bubbleRadius);
+                
+                // Add value label inside bubble (center) - start at center, animate with bubble
                 const fmtValue = stat.value >= 1000 ? 
                     (stat.value / 1000).toFixed(1) + "k" : 
                     stat.value.toFixed(stat.unit === "%" ? 1 : 0);
-                overlay.append("text")
+                const valueText = overlay.append("text")
                     .attr("class", "bubble-value")
-                    .attr("x", x)
-                    .attr("y", y + 2)
+                    .attr("x", centerX)
+                    .attr("y", centerY + 2)
                     .text(fmtValue)
                     .style("font-size", "11px")
-                    .style("font-weight", "bold");
+                    .style("font-weight", "bold")
+                    .style("opacity", 0);
                 
-                // Add unit label inside bubble (below value)
-                overlay.append("text")
+                valueText.transition()
+                    .duration(600)
+                    .ease(d3.easeCubicOut)
+                    .delay(200)
+                    .attr("x", x)
+                    .attr("y", y + 2)
+                    .style("opacity", 1);
+                
+                // Add unit label inside bubble (below value) - start at center, animate with bubble
+                const unitText = overlay.append("text")
                     .attr("class", "bubble-value")
+                    .attr("x", centerX)
+                    .attr("y", centerY + 14)
+                    .text(stat.unit)
+                    .style("font-size", "8px")
+                    .style("opacity", 0);
+                
+                unitText.transition()
+                    .duration(600)
+                    .ease(d3.easeCubicOut)
+                    .delay(200)
                     .attr("x", x)
                     .attr("y", y + 14)
-                    .text(stat.unit)
-                    .style("font-size", "8px");
+                    .style("opacity", 1);
                 
-                // Add dimension name label outside bubble (positioned further out)
-                let labelRadius = radius + bubbleRadius + 15; // Position label outside the bubble
-                let labelX = centerX + labelRadius * Math.cos(angle);
-                let labelY = centerY + labelRadius * Math.sin(angle);
-                
-                // Apply special offsets for specific labels
-                if (stat.name === "Basic Sanitation") {
-                    // Offset up-left: move up and left
-                    labelX -= 15;
-                    labelY -= 10;
-                } else if (stat.name === "Population <18") {
-                    // Offset up-right: move up and right
-                    labelX += 15;
-                    labelY -= 10;
-                }
-                
-                // Add connecting line from bubble to label
-                overlay.append("line")
+                // Add connecting line from bubble to label - start at center, animate
+                const connectorLine = overlay.append("line")
                     .attr("class", "bubble-label-connector")
+                    .attr("x1", centerX)
+                    .attr("y1", centerY)
+                    .attr("x2", centerX)
+                    .attr("y2", centerY)
+                    .attr("stroke", "#666")
+                    .attr("stroke-width", 1)
+                    .attr("stroke-dasharray", "2,2")
+                    .style("opacity", 0);
+                
+                connectorLine.transition()
+                    .duration(600)
+                    .ease(d3.easeCubicOut)
+                    .delay(400)
                     .attr("x1", x)
                     .attr("y1", y)
                     .attr("x2", labelX)
                     .attr("y2", labelY)
-                    .attr("stroke", "#666")
-                    .attr("stroke-width", 1)
-                    .attr("stroke-dasharray", "2,2")
                     .style("opacity", 0.6);
                 
-                // Create a group for the label with background
+                // Create a group for the label with background - start at center, animate to final position
                 const labelGroup = overlay.append("g")
                     .attr("class", "bubble-dimension-label-group")
-                    .attr("transform", `translate(${labelX}, ${labelY})`);
+                    .attr("transform", `translate(${centerX}, ${centerY})`)
+                    .style("opacity", 0);
                 
                 // Add text first to measure it
                 const labelText = labelGroup.append("text")
@@ -2138,6 +2178,14 @@
                     .attr("stroke", "#333")
                     .attr("stroke-width", 0.5)
                     .attr("rx", 2);
+                
+                // Animate label group from center to final position
+                labelGroup.transition()
+                    .duration(600)
+                    .ease(d3.easeCubicOut)
+                    .delay(500)
+                    .attr("transform", `translate(${labelX}, ${labelY})`)
+                    .style("opacity", 1);
             });
             
         }
@@ -2307,7 +2355,7 @@
             
             legendContainer.appendChild(statesSection);
             
-            // Section 3: Bubble Chart Statistics - REMOVED
+            // Section 4: Bubble Chart Statistics - REMOVED
             // Bubble chart explanation is now in the description box
         }
         
