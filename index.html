@@ -548,6 +548,11 @@
             r: 8;
         }
 
+        .tree-node.leaf.highlighted circle {
+            stroke: #ff6b6b !important;
+            stroke-width: 3px !important;
+        }
+
         .tree-node text {
             font-size: 11px;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -921,7 +926,7 @@
                         </div>
                         <div id="legend-items"></div>
                         <div id="bubble-description" style="margin-top: 20px; padding: 12px; background-color: #f0f0f0; border-radius: 4px; font-size: 11px; line-height: 1.5; color: #333;">
-                            <strong>Bubble Chart:</strong> When you select a country, branching bubbles appear showing key data dimensions. Each bubble's color hue encodes the z-score of that dimension using the magma color scale (darker = lower z-score, lighter = higher z-score).
+                            <strong>Bubble Chart:</strong> When you select a country, branching bubbles appear showing up to 5 key data dimensions. Each bubble's color hue encodes the z-score of that dimension using the magma color scale (darker = lower z-score, lighter = higher z-score).
                         </div>
                     </div>
                 </div>
@@ -1936,31 +1941,64 @@
                     name: "Mortality Rate (ages 5-14)",
                     rawValue: data["among5_14_mortality_rate_2022_raw"],
                     unit: "per 100k",
-                    field: "among5_14_mortality_rate_2022_raw"
+                    field: "among5_14_mortality_rate_2022_raw",
+                    highlighted: true
                 },
                 {
                     name: "Primary Completion",
                     rawValue: data["completion_rate_2000_2023_primary_raw"],
                     unit: "%",
-                    field: "completion_rate_2000_2023_primary_raw"
+                    field: "completion_rate_2000_2023_primary_raw",
+                    highlighted: true
                 },
                 {
                     name: "Basic Sanitation",
                     rawValue: data["basic_sanitation_household_perc_2022_raw"],
                     unit: "%",
-                    field: "basic_sanitation_household_perc_2022_raw"
+                    field: "basic_sanitation_household_perc_2022_raw",
+                    highlighted: true
                 },
                 {
                     name: "Stunted Growth",
                     rawValue: data["stunted_perc_2022_raw"],
                     unit: "%",
-                    field: "stunted_perc_2022_raw"
+                    field: "stunted_perc_2022_raw",
+                    highlighted: true
                 },
                 {
                     name: "Happiness Rank",
                     rawValue: data["happiness_rank_raw"],
                     unit: "",
-                    field: "happiness_rank_raw"
+                    field: "happiness_rank_raw",
+                    highlighted: true
+                },
+                {
+                    name: "Life Expectancy",
+                    rawValue: data["life_expectancy_at_birth_2023_raw"],
+                    unit: "years",
+                    field: "life_expectancy_at_birth_2023_raw",
+                    highlighted: false
+                },
+                {
+                    name: "PM2.5 Exposure",
+                    rawValue: data["pm25_latest_raw"],
+                    unit: "µg/m³",
+                    field: "pm25_latest_raw",
+                    highlighted: false
+                },
+                {
+                    name: "GDP per Capita",
+                    rawValue: data["gdp_latest_raw"],
+                    unit: "US$",
+                    field: "gdp_latest_raw",
+                    highlighted: false
+                },
+                {
+                    name: "Internet Access",
+                    rawValue: data["internet_latest_raw"],
+                    unit: "%",
+                    field: "internet_latest_raw",
+                    highlighted: false
                 }
             ];
 
@@ -1974,7 +2012,8 @@
                     value: isMissing(dim.rawValue) ? null : parseFloat(dim.rawValue),
                     unit: dim.unit,
                     rawValue: dim.rawValue,
-                    isMissing: isMissing(dim.rawValue)
+                    isMissing: isMissing(dim.rawValue),
+                    highlighted: dim.highlighted || false
                 }))
             };
             
@@ -2000,11 +2039,37 @@
                 .data(rootNode.descendants())
                 .enter()
                 .append("g")
-                .attr("class", d => d.depth === 0 ? "tree-node root" : "tree-node leaf")
+                .attr("class", d => {
+                    let classes = d.depth === 0 ? "tree-node root" : "tree-node leaf";
+                    if (d.depth > 0 && d.data.highlighted) {
+                        classes += " highlighted";
+                    }
+                    return classes;
+                })
                 .attr("transform", d => `translate(${d.y + 100},${d.x})`);
             
             // Add circles first (so they appear behind text)
-            nodes.append("circle");
+            nodes.append("circle")
+                .attr("stroke", d => {
+                    if (d.depth > 0 && d.data.highlighted) {
+                        return "#ff6b6b"; // Highlight color for highlighted nodes
+                    }
+                    // For non-highlighted leaf nodes, use default blue
+                    if (d.depth > 0) {
+                        return "#4a90e2";
+                    }
+                    return null; // Root node uses CSS
+                })
+                .attr("stroke-width", d => {
+                    if (d.depth > 0 && d.data.highlighted) {
+                        return 3;
+                    }
+                    // For non-highlighted leaf nodes, use default width
+                    if (d.depth > 0) {
+                        return 2;
+                    }
+                    return null; // Root node uses CSS
+                });
             
             // Add text labels (on top of circles)
             const textLabels = nodes.append("text")
@@ -2043,6 +2108,60 @@
                     const val = fmt(d.data.value, d.data.unit === "%" ? 1 : (d.data.unit === "US$" ? 0 : 1));
                     return `${val} ${d.data.unit}`;
                 });
+            
+            // Add legend underneath the tree
+            const legend = treeWrapper.append("div")
+                .attr("class", "tree-legend")
+                .style("margin-top", "10px")
+                .style("text-align", "center")
+                .style("font-size", "11px")
+                .style("color", "#666");
+            
+            const legendItems = legend.append("div")
+                .style("display", "flex")
+                .style("justify-content", "center")
+                .style("gap", "20px")
+                .style("align-items", "center");
+            
+            // Red node (key data dimensions)
+            const redLegend = legendItems.append("div")
+                .style("display", "flex")
+                .style("align-items", "center")
+                .style("gap", "6px");
+            
+            redLegend.append("svg")
+                .attr("width", 16)
+                .attr("height", 16)
+                .append("circle")
+                .attr("cx", 8)
+                .attr("cy", 8)
+                .attr("r", 6)
+                .attr("fill", "#fff")
+                .attr("stroke", "#ff6b6b")
+                .attr("stroke-width", "3px");
+            
+            redLegend.append("span")
+                .text("Key data dimensions (shown in bubble chart)");
+            
+            // Blue node (secondary data dimensions)
+            const blueLegend = legendItems.append("div")
+                .style("display", "flex")
+                .style("align-items", "center")
+                .style("gap", "6px");
+            
+            blueLegend.append("svg")
+                .attr("width", 16)
+                .attr("height", 16)
+                .append("circle")
+                .attr("cx", 8)
+                .attr("cy", 8)
+                .attr("r", 6)
+                .attr("fill", "#fff")
+                .attr("stroke", "#4a90e2")
+                .attr("stroke-width", "2px");
+            
+            blueLegend.append("span")
+                .text("Secondary data dimensions");
         }
 
         // Function to create the other statistics tree
@@ -2065,34 +2184,10 @@
             // Other statistics that don't contribute to aggregate index
             const otherStats = [
                 {
-                    name: "Life Expectancy",
-                    rawValue: data["life_expectancy_at_birth_2023_raw"],
-                    unit: "years",
-                    field: "life_expectancy_at_birth_2023_raw"
-                },
-                {
-                    name: "PM2.5 Exposure",
-                    rawValue: data["pm25_latest_raw"],
-                    unit: "µg/m³",
-                    field: "pm25_latest_raw"
-                },
-                {
-                    name: "GDP per Capita",
-                    rawValue: data["gdp_latest_raw"],
-                    unit: "US$",
-                    field: "gdp_latest_raw"
-                },
-                {
                     name: "Population <18",
                     rawValue: data["population_2023_thousands_under18"] ? (parseFloat(data["population_2023_thousands_under18"]) / 1000) : null,
                     unit: "millions",
                     field: "population_2023_thousands_under18"
-                },
-                {
-                    name: "Internet Access",
-                    rawValue: data["internet_latest_raw"],
-                    unit: "%",
-                    field: "internet_latest_raw"
                 }
             ];
             
@@ -2167,11 +2262,11 @@
             // Define the 5 key statistics with both raw values (for display) and z-score fields (for coloring)
             const stats = [
                 {
-                    name: "Life Expectancy",
-                    value: parseFloat(data["life_expectancy_at_birth_2023_raw"]) || 0,
-                    unit: "years",
-                    rawField: "life_expectancy_at_birth_2023_raw",
-                    zScoreField: "life_expectancy_at_birth_2023"
+                    name: "Stunted Growth",
+                    value: parseFloat(data["stunted_perc_2022_raw"]) || 0,
+                    unit: "%",
+                    rawField: "stunted_perc_2022_raw",
+                    zScoreField: "stunted_perc_2022"
                 },
                 {
                     name: "Happiness Rank",
