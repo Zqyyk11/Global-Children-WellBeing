@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interactive World Map - D3.js</title>
+    <title>Mapping Global Child Well-Being: An Interactive Visualization for Social Good  - D3.js</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <!-- D3 color schemes (including magma) -->
     <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
@@ -25,6 +25,202 @@
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             width: 100%;
             box-sizing: border-box;
+            position: relative;
+        }
+        
+        /* Tutorial button */
+        #tutorial-wrapper {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        #tutorial-btn {
+            padding: 16px 32px;
+            background-color: #4a90e2;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+        
+        #tutorial-btn:hover {
+            background-color: #357abd;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+        }
+        
+        #tutorial-hint {
+            font-size: 13px;
+            color: #666;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 6px 12px;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        #tutorial-hint-arrow {
+            font-size: 16px;
+            color: #4a90e2;
+        }
+        
+        /* Tutorial overlay */
+        #tutorial-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            display: none;
+            pointer-events: auto;
+        }
+        
+        #tutorial-overlay.active {
+            display: block;
+        }
+        
+        /* Interactive steps: no dimming, allow clicks through to page elements */
+        #tutorial-overlay.interactive {
+            background-color: rgba(0, 0, 0, 0);
+            pointer-events: none;
+        }
+        
+        /* Tutorial content and buttons should always be clickable */
+        .tutorial-content {
+            pointer-events: auto;
+            z-index: 2003;
+        }
+        
+        #tutorial-overlay.interactive .tutorial-highlight {
+            pointer-events: none;
+        }
+        
+        /* Tutorial highlight box */
+        .tutorial-highlight {
+            position: fixed;
+            border: 4px solid #ff0000;
+            background-color: rgba(255, 0, 0, 0.1);
+            pointer-events: none;
+            z-index: 2001;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+            transition: all 0.3s;
+            border-radius: 4px;
+        }
+        
+        /* Tutorial content box */
+        .tutorial-content {
+            position: fixed;
+            background-color: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            z-index: 2002;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .tutorial-content h3 {
+            margin-top: 0;
+            color: #333;
+            font-size: 20px;
+        }
+        
+        .tutorial-content p {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        
+        .tutorial-nav {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        
+        .tutorial-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .tutorial-btn-primary {
+            background-color: #4a90e2;
+            color: white;
+        }
+        
+        .tutorial-btn-primary:hover {
+            background-color: #357abd;
+        }
+        
+        .tutorial-btn-secondary {
+            background-color: #e0e0e0;
+            color: #333;
+        }
+        
+        .tutorial-btn-secondary:hover {
+            background-color: #d0d0d0;
+        }
+        
+        .tutorial-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .tutorial-close {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .tutorial-close:hover {
+            color: #333;
+        }
+        
+        .tutorial-step-indicator {
+            text-align: center;
+            margin-bottom: 15px;
+            color: #999;
+            font-size: 12px;
         }
         
         h1 {
@@ -660,8 +856,30 @@
     </style>
 </head>
 <body>
+    <div id="tutorial-wrapper">
+        <button id="tutorial-btn">📚 Tutorial</button>
+        <div id="tutorial-hint">
+            <span id="tutorial-hint-arrow">↑</span>
+            <span>Feeling lost? Start here!</span>
+        </div>
+    </div>
+    
+    <div id="tutorial-overlay">
+        <div class="tutorial-highlight" id="tutorial-highlight"></div>
+        <div class="tutorial-content" id="tutorial-content">
+            <button class="tutorial-close" id="tutorial-close">×</button>
+            <div class="tutorial-step-indicator" id="tutorial-step-indicator">Step 1 of 8</div>
+            <h3 id="tutorial-title">Welcome to the Tutorial</h3>
+            <p id="tutorial-text">This tutorial will guide you through all the interactive features of this visualization.</p>
+            <div class="tutorial-nav">
+                <button class="tutorial-btn tutorial-btn-secondary" id="tutorial-prev">Previous</button>
+                <button class="tutorial-btn tutorial-btn-primary" id="tutorial-next">Next</button>
+            </div>
+        </div>
+    </div>
+    
     <div class="container">
-        <h1>Interactive World Map</h1>
+        <h1>Mapping Global Child Well-Being:<br>An Interactive Visualization for Social Good </h1>
         <p class="subtitle">Click on any country to view its data • Scroll to zoom, drag to pan</p>
 
         <div class="view-toggle">
@@ -941,7 +1159,7 @@
 
                 // Update bubbles when data is loaded
                 if (Object.keys(countryData).length > 0) {
-                    updateCountryColors();
+                updateCountryColors();
                 }
             })
             .catch(function(error) {
@@ -1007,6 +1225,9 @@
             // Display country data
             const data = findCountryData(countryName);
             displayCountryData(data, geoData);
+            
+            // Advance tutorial if waiting for country click
+            advanceTutorialOnAction("countryClick");
         }
         
         // Handle click in comparison mode
@@ -1028,6 +1249,9 @@
                 mapGroup.selectAll(".country")
                     .filter(d => (d.properties.NAME || d.properties.name || "Unknown") === countryName)
                     .classed(classToApply, true);
+                
+                // Advance tutorial if waiting for comparison country click
+                advanceTutorialOnAction("comparisonCountryClick");
             }
             
             updateComparisonDisplay();
@@ -2423,6 +2647,9 @@
                 
                 // Update legend
                 updateLegend();
+                
+                // Advance tutorial if waiting for comparison view click
+                advanceTutorialOnAction("comparisonViewClick");
             });
         }
         
@@ -2433,6 +2660,342 @@
                 clearComparisonSelections();
             });
         }
+        
+        // Tutorial system
+        let currentTutorialStep = 0;
+        const tutorialSteps = [
+            {
+                title: "Welcome to the Tutorial",
+                text: "This interactive visualization shows global children's wellbeing data. Let's explore its features step by step!",
+                highlight: null,
+                scrollTo: null,
+                interactive: false
+            },
+            {
+                title: "Selecting a Country",
+                text: "Click on any country on the map to view its detailed data. The map uses color encoding to show different metrics. Try clicking on a country now!",
+                highlight: "#map-svg-container",
+                scrollTo: "#map-container",
+                interactive: true,
+                waitFor: "countryClick"
+            },
+            {
+                title: "Branching Bubbles",
+                text: "When you select a country, branching bubbles appear on the map showing key data dimensions. Each bubble's color encodes the z-score of that dimension. Did you catch them emerging from the center?",
+                highlight: ".bubble-overlay",
+                scrollTo: "#map-svg-container",
+                interactive: false,
+                positionContent: "right"
+            },
+            {
+                title: "Color Encoding Filter",
+                text: "Use the 'Colour by' radio buttons in the legend to change what metric is encoded in the map colors. You can view Aggregate Index, Happiness Rank, Child Mortality, and more.",
+                highlight: "#metric-controls",
+                scrollTo: "#bubble-legend",
+                interactive: false
+            },
+            {
+                title: "Info Display Panel",
+                text: "Below the map, you'll see detailed information about the selected country, including tree visualizations of the aggregate index and other statistics. This panel pops up when a country is selected.",
+                highlight: "#info-panel",
+                scrollTo: "#info-panel",
+                interactive: false
+            },
+            {
+                title: "Switching to Comparison View",
+                text: "Click the 'Comparison View' button at the top to switch modes. This allows you to compare multiple countries side by side.",
+                highlight: "#comparison-view-btn",
+                scrollTo: ".view-toggle",
+                interactive: true,
+                waitFor: "comparisonViewClick"
+            },
+            {
+                title: "Selecting Countries for Comparison",
+                text: "In Comparison View, click on countries to add them to the comparison. You can select more than just two countries! Selected countries are highlighted with colored borders. Try selecting a country right now!",
+                highlight: "#map-svg-container",
+                scrollTo: "#map-container",
+                interactive: true,
+                waitFor: "comparisonCountryClick"
+            },
+            {
+                title: "Radar Chart",
+                text: "When you select countries in Comparison View, a radar chart appears at the bottom showing how they compare across different dimensions. The chart uses z-scores normalized to a 0-100 scale.",
+                highlight: "#comparison-radar-container",
+                scrollTo: "#comparison-panel",
+                interactive: false,
+                forceScroll: true
+            }
+        ];
+        
+        function getElementPosition(selector) {
+            // Handle multiple elements (like .bubble-overlay)
+            const elements = document.querySelectorAll(selector);
+            if (elements.length === 0) return null;
+            
+            // If multiple elements, get bounding box of all
+            if (elements.length > 1) {
+                let minTop = Infinity, minLeft = Infinity, maxBottom = -Infinity, maxRight = -Infinity;
+                elements.forEach(el => {
+                    const rect = el.getBoundingClientRect();
+                    minTop = Math.min(minTop, rect.top);
+                    minLeft = Math.min(minLeft, rect.left);
+                    maxBottom = Math.max(maxBottom, rect.bottom);
+                    maxRight = Math.max(maxRight, rect.right);
+                });
+                return {
+                    top: minTop + window.scrollY,
+                    left: minLeft + window.scrollX,
+                    width: maxRight - minLeft,
+                    height: maxBottom - minTop
+                };
+            }
+            
+            const element = elements[0];
+            const rect = element.getBoundingClientRect();
+            return {
+                top: rect.top + window.scrollY,
+                left: rect.left + window.scrollX,
+                width: rect.width,
+                height: rect.height
+            };
+        }
+        
+        function highlightElement(selector) {
+            const highlight = document.getElementById("tutorial-highlight");
+            if (!selector) {
+                highlight.style.display = "none";
+                return;
+            }
+            
+            // Wait a bit for dynamic elements
+            setTimeout(() => {
+                const elements = document.querySelectorAll(selector);
+                if (elements.length === 0) {
+                    highlight.style.display = "none";
+                    // Center content if no highlight
+                    const content = document.getElementById("tutorial-content");
+                    content.style.top = "50%";
+                    content.style.left = "50%";
+                    content.style.transform = "translate(-50%, -50%)";
+                    return;
+                }
+                
+                // Get bounding box of all matching elements
+                let minTop = Infinity, minLeft = Infinity, maxBottom = -Infinity, maxRight = -Infinity;
+                elements.forEach(el => {
+                    const rect = el.getBoundingClientRect();
+                    minTop = Math.min(minTop, rect.top);
+                    minLeft = Math.min(minLeft, rect.left);
+                    maxBottom = Math.max(maxBottom, rect.bottom);
+                    maxRight = Math.max(maxRight, rect.right);
+                });
+                
+                highlight.style.display = "block";
+                highlight.style.top = minTop + "px";
+                highlight.style.left = minLeft + "px";
+                highlight.style.width = (maxRight - minLeft) + "px";
+                highlight.style.height = (maxBottom - minTop) + "px";
+                
+                positionTutorialContent();
+            }, 100);
+        }
+        
+        function scrollToElement(selector) {
+            if (!selector) return;
+            const element = document.querySelector(selector);
+            if (element) {
+                element.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+        }
+        
+        function positionTutorialContent(position = "auto") {
+            const content = document.getElementById("tutorial-content");
+            const highlight = document.getElementById("tutorial-highlight");
+            
+            if (highlight.style.display === "none" || highlight.style.display === "") {
+                // Center the content
+                content.style.top = "50%";
+                content.style.left = "50%";
+                content.style.transform = "translate(-50%, -50%)";
+            } else {
+                // Position near the highlight
+                const highlightRect = highlight.getBoundingClientRect();
+                const contentRect = content.getBoundingClientRect();
+                const viewportWidth = window.innerWidth;
+                const viewportHeight = window.innerHeight;
+                
+                let top, left;
+                
+                if (position === "right") {
+                    // Position to the right of the highlight
+                    left = highlightRect.right + 20;
+                    top = highlightRect.top + (highlightRect.height / 2) - (contentRect.height / 2);
+                    
+                    // Adjust if content would go off screen
+                    if (left + contentRect.width > viewportWidth) {
+                        left = highlightRect.left - contentRect.width - 20;
+                    }
+                    if (top + contentRect.height > viewportHeight) {
+                        top = viewportHeight - contentRect.height - 20;
+                    }
+                    if (top < 20) {
+                        top = 20;
+                    }
+                } else {
+                    // Default: position below or above
+                    top = highlightRect.bottom + 20;
+                    left = highlightRect.left;
+                    
+                    // Adjust if content would go off screen
+                    if (top + contentRect.height > viewportHeight) {
+                        top = highlightRect.top - contentRect.height - 20;
+                    }
+                    if (top < 20) {
+                        top = 20;
+                    }
+                    if (left + contentRect.width > viewportWidth) {
+                        left = viewportWidth - contentRect.width - 20;
+                    }
+                    if (left < 20) {
+                        left = 20;
+                    }
+                }
+                
+                content.style.top = top + "px";
+                content.style.left = left + "px";
+                content.style.transform = "none";
+            }
+        }
+        
+        function showTutorialStep(stepIndex) {
+            if (stepIndex < 0 || stepIndex >= tutorialSteps.length) return;
+            
+            currentTutorialStep = stepIndex;
+            const step = tutorialSteps[stepIndex];
+            
+            document.getElementById("tutorial-title").textContent = step.title;
+            document.getElementById("tutorial-text").textContent = step.text;
+            document.getElementById("tutorial-step-indicator").textContent = `Step ${stepIndex + 1} of ${tutorialSteps.length}`;
+            
+            // Update navigation buttons - hide next for interactive steps
+            const nextBtn = document.getElementById("tutorial-next");
+            const prevBtn = document.getElementById("tutorial-prev");
+            
+            prevBtn.disabled = stepIndex === 0;
+            
+            if (step.interactive) {
+                nextBtn.style.display = "none";
+            } else {
+                nextBtn.style.display = "block";
+                nextBtn.textContent = stepIndex === tutorialSteps.length - 1 ? "Finish" : "Next";
+            }
+            
+            // Enable/disable overlay interactions and dimming
+            const overlay = document.getElementById("tutorial-overlay");
+            if (step.interactive) {
+                overlay.classList.add("interactive");
+                // Remove dimming for interactive steps
+                overlay.style.backgroundColor = "rgba(0, 0, 0, 0)";
+            } else {
+                overlay.classList.remove("interactive");
+                // Add dimming for non-interactive steps
+                overlay.style.backgroundColor = "rgba(0, 0, 0, 0.7)";
+            }
+            
+            // Force switch to default view for step 2 (selecting a country)
+            if (stepIndex === 1 && comparisonMode) {
+                // Switch to default view
+                comparisonMode = false;
+                const defaultViewBtn = document.getElementById("default-view-btn");
+                const comparisonViewBtn = document.getElementById("comparison-view-btn");
+                if (defaultViewBtn && comparisonViewBtn) {
+                    defaultViewBtn.classList.add("active");
+                    comparisonViewBtn.classList.remove("active");
+                }
+                
+                // Clear comparison selections
+                comparisonCountries = [];
+                mapGroup.selectAll(".country")
+                    .classed("selected-1", false)
+                    .classed("selected-2", false);
+                
+                // Remove bubble chart overlay
+                mapGroup.selectAll(".bubble-overlay").remove();
+                
+                // Hide comparison panel, show info panel
+                d3.select("#comparison-panel").classed("active", false);
+                d3.select("#info-panel").style("display", "block");
+                
+                // Update legend
+                updateLegend();
+            }
+            
+            // Scroll to element
+            if (step.scrollTo) {
+                scrollToElement(step.scrollTo);
+            }
+            
+            // Force scroll to bottom for radar chart
+            if (step.forceScroll) {
+                setTimeout(() => {
+                    window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+                }, 500);
+            }
+            
+            // Highlight element
+            setTimeout(() => {
+                highlightElement(step.highlight);
+                positionTutorialContent(step.positionContent || "auto");
+            }, 500);
+        }
+        
+        function advanceTutorialOnAction(action) {
+            const step = tutorialSteps[currentTutorialStep];
+            if (step && step.waitFor === action) {
+                setTimeout(() => {
+                    nextTutorialStep();
+                }, 500);
+            }
+        }
+        
+        function startTutorial() {
+            document.getElementById("tutorial-overlay").classList.add("active");
+            showTutorialStep(0);
+        }
+        
+        function closeTutorial() {
+            document.getElementById("tutorial-overlay").classList.remove("active");
+            document.getElementById("tutorial-highlight").style.display = "none";
+        }
+        
+        function nextTutorialStep() {
+            if (currentTutorialStep < tutorialSteps.length - 1) {
+                showTutorialStep(currentTutorialStep + 1);
+            } else {
+                closeTutorial();
+            }
+        }
+        
+        function prevTutorialStep() {
+            if (currentTutorialStep > 0) {
+                showTutorialStep(currentTutorialStep - 1);
+            }
+        }
+        
+        // Tutorial event listeners
+        document.getElementById("tutorial-btn").addEventListener("click", startTutorial);
+        document.getElementById("tutorial-close").addEventListener("click", closeTutorial);
+        document.getElementById("tutorial-next").addEventListener("click", nextTutorialStep);
+        document.getElementById("tutorial-prev").addEventListener("click", prevTutorialStep);
+        
+        // Update tutorial content position on scroll/resize
+        window.addEventListener("scroll", positionTutorialContent);
+        window.addEventListener("resize", () => {
+            if (document.getElementById("tutorial-overlay").classList.contains("active")) {
+                highlightElement(tutorialSteps[currentTutorialStep].highlight);
+                positionTutorialContent();
+            }
+        });
         
         // Load CSV data automatically
         // Uses worldchildwellbeing3 (1).csv, which contains Z‑scores and *_raw values
