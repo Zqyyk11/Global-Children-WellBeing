@@ -2610,6 +2610,9 @@
                 defaultViewBtn.classList.add("active");
                 comparisonViewBtn.classList.remove("active");
                 
+                // Update subtitle
+                document.getElementById("subtitle").textContent = "Click on any country to view its data • Scroll to zoom, drag to pan. Scroll down to see specific statistics.";
+                
                 // Clear comparison selections
                 comparisonCountries = [];
                 mapGroup.selectAll(".country")
@@ -2631,6 +2634,9 @@
                 comparisonMode = true;
                 comparisonViewBtn.classList.add("active");
                 defaultViewBtn.classList.remove("active");
+                
+                // Update subtitle
+                document.getElementById("subtitle").textContent = "Click on countries to select them for comparison. Select multiple countries to compare their statistics on the radar chart below.";
                 
                 // Clear single selection
                 selectedCountry = null;
