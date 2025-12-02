@@ -95,10 +95,19 @@
             display: block;
         }
         
-        /* Interactive steps: no dimming, allow clicks through to page elements */
+        /* Interactive steps: allow clicks through to page elements */
         #tutorial-overlay.interactive {
-            background-color: rgba(0, 0, 0, 0);
             pointer-events: none;
+        }
+        
+        /* Consistent dimming: when there's no highlight, use the main overlay for dimming */
+        #tutorial-overlay:not(.has-highlight) {
+            background-color: rgba(0, 0, 0, 0.7) !important;
+        }
+        
+        /* When there's a highlight, remove main overlay dimming (dimming overlays handle it) */
+        #tutorial-overlay.has-highlight {
+            background-color: rgba(0, 0, 0, 0) !important;
         }
         
         /* Tutorial content and buttons should always be clickable */
@@ -157,11 +166,6 @@
             top: 0;
             bottom: 0;
             right: 0;
-        }
-        
-        /* Remove the background dimming from the main overlay when highlighting */
-        #tutorial-overlay.has-highlight {
-            background-color: rgba(0, 0, 0, 0);
         }
         
         /* Tutorial content box */
@@ -3114,17 +3118,18 @@
                 nextBtn.textContent = stepIndex === tutorialSteps.length - 1 ? "Finish" : "Next";
             }
             
-            // Enable/disable overlay interactions and dimming
+            // Enable/disable overlay interactions (dimming is handled by CSS and dimming overlays)
             const overlay = document.getElementById("tutorial-overlay");
             if (step.interactive) {
                 overlay.classList.add("interactive");
-                // Remove dimming for interactive steps
-                overlay.style.backgroundColor = "rgba(0, 0, 0, 0)";
             } else {
                 overlay.classList.remove("interactive");
-                // Add dimming for non-interactive steps
-                overlay.style.backgroundColor = "rgba(0, 0, 0, 0.7)";
             }
+            
+            // Dimming is now handled consistently:
+            // - If there's a highlight, dimming overlays (top/bottom/left/right) handle it
+            // - If there's no highlight, the main overlay background handles it
+            // - CSS rules ensure consistent dimming regardless of interactive state
             
             // Force switch to default view for step 2 (selecting a country)
             if (stepIndex === 1 && comparisonMode) {
