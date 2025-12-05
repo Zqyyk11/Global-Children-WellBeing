@@ -281,6 +281,49 @@
             font-size: 14px;
         }
         
+        .data-sources {
+            margin-top: 40px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border-top: 2px solid #e0e0e0;
+        }
+        
+        .data-sources h3 {
+            margin: 0 0 15px 0;
+            color: #333;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .data-sources ul {
+            margin: 0;
+            padding-left: 20px;
+            list-style-type: none;
+        }
+        
+        .data-sources li {
+            margin-bottom: 10px;
+            color: #555;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        .data-sources li:last-child {
+            margin-bottom: 0;
+        }
+        
+        .data-sources a {
+            color: #4a90e2;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        
+        .data-sources a:hover {
+            color: #357abd;
+            text-decoration: underline;
+        }
+        
         #map-container {
             display: flex;
             justify-content: center;
@@ -997,6 +1040,24 @@
             </div>
             <div class="comparison-countries-list" id="comparison-countries-list"></div>
             <div class="comparison-radar-container" id="comparison-radar-container"></div>
+        </div>
+
+        <div class="data-sources">
+            <h3>Data Sources</h3>
+            <ul>
+                <li>
+                    <strong>UNICEF State of the World's Children:</strong> 
+                    <a href="https://data.unicef.org/resources/sowc-2024/" target="_blank" rel="noopener noreferrer">
+                        https://data.unicef.org/resources/sowc-2024/
+                    </a>
+                </li>
+                <li>
+                    <strong>World Bank Data:</strong> 
+                    <a href="https://databank.worldbank.org/reports.aspx?source=2&series=EN.ATM.PM25.MC.m3&country" target="_blank" rel="noopener noreferrer">
+                        https://databank.worldbank.org/reports.aspx?source=2&series=EN.ATM.PM25.MC.m3&country
+                    </a>
+                </li>
+            </ul>
         </div>
 
     </div>
@@ -2879,7 +2940,7 @@
             {
                 title: "Radar Chart",
                 text: "When you select countries in Comparison View, a radar chart appears at the bottom showing how they compare across different dimensions. The chart uses z-scores normalized to a 0-100 scale.",
-                highlight: "#comparison-radar-container",
+                highlight: "#comparison-panel",
                 scrollTo: "#comparison-panel",
                 interactive: false,
                 forceScroll: true
