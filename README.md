@@ -9,31 +9,6 @@ An interactive D3.js world map visualization that displays country data when you
 - **Hover Effects**: Countries highlight when you hover over them
 - **Smart Country Matching**: Handles variations in country names between the map and CSV data
 
-## How to Use
-
-1. **Open the visualization**: Simply open `index.html` in a web browser
-
-   - You can double-click the file, or
-   - Use a local web server (recommended for loading CSV files):
-     ```bash
-     # Using Python 3
-     python3 -m http.server 8000
-
-     # Then open: http://localhost:8000
-     ```
-2. **Interact with the map**:
-
-   - **Hover** over countries to see their names
-   - **Click** on any country to view its data in the info panel below
-   - The selected country will be highlighted in blue
-3. **View country data**: When you click a country, the info panel will display:
-
-   - Ladder score
-   - GDP per capita
-   - Social support
-   - Healthy life expectancy
-   - And other metrics from your CSV file
-
 ## Files
 
 - `index.html` - Main visualization file (includes all HTML, CSS, and JavaScript)
@@ -46,15 +21,6 @@ An interactive D3.js world map visualization that displays country data when you
 - **TopoJSON**: For efficient map data storage
 - **Mercator Projection**: Standard world map projection
 - **Responsive Design**: Works on different screen sizes
-
-## Customization
-
-You can customize the visualization by:
-
-1. **Changing colors**: Edit the CSS in the `<style>` section
-2. **Modifying data display**: Update the `displayCountryData()` function
-3. **Adding more data sources**: Extend the `loadCountryData()` function
-4. **Adjusting map projection**: Change the `projection` settings
 
 ## Notes
 
