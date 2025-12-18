@@ -5,14 +5,16 @@ An interactive D3.js world map visualization that displays country data when you
 ## Features
 
 - **Interactive World Map**: Click on any country to view its data
-- **Data Integration**: Automatically loads data from `WHR23_Data_Figure_2.1.csv`
+- **Data Integration**: Automatically loads data after creation of dataset in RCleaningAndMerging from various CSV files
 - **Hover Effects**: Countries highlight when you hover over them
 - **Smart Country Matching**: Handles variations in country names between the map and CSV data
 
 ## Files
 
 - `index.html` - Main visualization file (includes all HTML, CSS, and JavaScript)
-- `WHR23_Data_Figure_2.1.csv` - World Happiness Report data
+- `RCleaningAndMerging` - Folder including all raw CSV files used, and R script used for cleaning and merging 
+- `worldchildwellbeing3 (1)csv` - Final merged dataset after R cleaning and merging script to include all data needed for visualization
+- `annotated-mock-design-1.pdf` - Initial rough draft and explanation of planned visualization
 - `README.md` - This file
 
 ## Technical Details
